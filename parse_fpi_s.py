@@ -48,4 +48,6 @@ if __name__=="__main__":
 
     fpi_data = df1[~df1["registration_no"].str.contains("Name")]
     fpi_specs = fpi_data.drop(columns="FPI_text", axis=1)
+    fpi_specs["name"] = fpi_specs.name.str.replace(": \n","")
     fpi_specs.to_csv("fpi_clean_all.csv")
+    #df1.to_csv("test.csv")
