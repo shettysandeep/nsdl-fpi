@@ -18,60 +18,30 @@ data1 = pd.DataFrame(result, columns=["FPI_text"])
 print(data1.FPI_text[4])
 
 
-# Parsing the text into structured columns
-def name_fpi(txt):
-    fpi_name = txt.split(":")[-1].split("Registration No.")[0].strip()
-    return fpi_name
+def text_between(txt, left_txt, right_txt):
+    return txt.split(left_txt)[-1].split(right_txt)[0].strip()
 
 
-def reg_extract(txt):
-    reg_no = txt.split("Registration No.")[-1].split("Category of FPI")[0].strip()
-    return reg_no
+delimiting_text = {
+    "name": [":", "Registration No."],
+    "registration_no": ["Registration No.", "Category of FPI"],
+    "category": ["\nCategory of FPI", "Address"],
+    "fpi_address": ["Address", "SubCategory of FPI"],
+    "sub_category": ["SubCategory of FPI", "Valid upto"],
+    "validity": ["Valid upto", "Country Name"],
+    "country_name": ["Country Name", "Status"],
+    "status_fpi": ["Status", "Name"],
+}
 
+for keys, value_list in delimiting_text.items():
+    data1[keys] = data1.FPI_text.apply(
+        lambda txt: text_between(txt, left_txt=value_list[0], right_txt=value_list[1])
+    )
 
-def fpi_cat(txt):
-    cat_fpi = txt.split("\nCategory of FPI")[-1].split("Address")[0].strip()
-    return cat_fpi
-
-
-def addrs(txt):
-    addr = txt.split("Address")[-1].split("SubCategory of FPI")[0].strip()
-    return addr
-
-
-def subcat(txt):
-    subcat1 = txt.split("SubCategory of FPI")[-1].split("Valid upto")[0].strip()
-    return subcat1
-
-
-def valid_upto(txt):
-    valid_upto = txt.split("Valid upto")[-1].split("Country Name")[0].strip()
-    return valid_upto
-
-
-def country_name(txt):
-    cntry_name = txt.split("Country Name")[-1].split("Status")[0].strip()
-    return cntry_name
-
-
-def status_r(txt):
-    stat_r = txt.split("Status")[-1].split("Name")[0].strip()
-    return stat_r
-
-
-# ~~~~~~~~~~~~~~~~~
-# Adding columns to dataset
-# ~~~~~~~~~~~~~~~~~~
-data1["Name_FPI"] = data1.FPI_text.apply(name_fpi)
-data1["Registration_No"] = data1.FPI_text.apply(reg_extract)
-data1["Category_FPI"] = data1.FPI_text.apply(fpi_cat)
-data1["Address_FPI"] = data1.FPI_text.apply(addrs)
-data1["Subcat_FPI"] = data1.FPI_text.apply(subcat)
-data1["Valid_upto"] = data1.FPI_text.apply(valid_upto)
-data1["Country_name_FPI"] = data1.FPI_text.apply(country_name)
-data1["Status_FPI"] = data1.FPI_text.apply(status_r)
-
-fpi_specs = data1[~data1["Registration_No"].str.contains("Name")]
+fpi_specs = data1[~data1["registration_no"].str.contains("Name")]
 fpi_specs = fpi_specs.drop(columns="FPI_text", axis=1)
 
-fpi_specs.to_csv("fpi.csv")
+fpi_specs.to_csv("fpi_clean.csv")
+
+print(fpi_specs)
+# print(data1)
