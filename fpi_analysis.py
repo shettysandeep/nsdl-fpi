@@ -3,6 +3,7 @@
 import pandas as pd
 from fpi_delimiting_text import cols_keep
 
+
 fpi = pd.read_csv("nsdl_data/jan_buy_sell_2025.csv", index_col=0)
 fpi = fpi[cols_keep]
 fpi_dat = fpi[(fpi.TR_TYPE == 1) | (fpi.TR_TYPE == 4)]
@@ -38,7 +39,23 @@ def min_max_price(df, action=1):
     )
 
 
-min_max_price(fpi_dat, 1)
+fpi_dat_grp = fpi_dat.groupby("ISIN")
+
+
+def wghtd_price(df):
+    df["WTD_PRICE"] = (df["RATE"] * (df["QUANTITY"] / df["QUANTITY"].sum())).sum()
+    return df
+
+
+test = fpi_dat_grp.apply(wghtd_price, include_groups=False)
+
+
+# fpi_dat["tot_qty"] = fpi_dat.groupby("ISIN")[["QUANTITY"]].transform(lambda x: sum(x))
+# fpi_dat["pri_qty"] = fpi_dat["QUANTITY"]*fpi_dat["PRICE"]
+# fpi_dat["weighted_"]
+# print(fpi_dat[fpi_dat.ISIN == "INE128S01021"].head())
+# lambda x: pd.Series((x["RATE"] * x["QUANTITY"]) / np.sum(x["QUANTITY"]))
+
 
 """ 
 There is a lot to do here. 

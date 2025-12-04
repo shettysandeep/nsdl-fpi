@@ -1,5 +1,6 @@
 from datetime import datetime
 from faicons import icon_svg
+from pathlib import Path
 
 import plotly.express as px
 from shinywidgets import render_plotly
@@ -10,12 +11,12 @@ from shiny.express import input, ui
 # import fpi_analysis
 
 import pandas as pd
+import calendar
 
-# source data for FPI flows - only one month
-df = pd.read_csv("nsdl_data/jan_buy_sell_2025.csv")
-df["mnth"] = "Jan"
-test = df[df["mnth"] == "Jan"]
-print(test[["mnth", "VALUE", "ISIN"]].head())
+pth = Path("fpi_data/")
+datfile = "fpi_2024_25.csv"
+# source data for FPI flows - 2024-25
+df = pd.read_csv(pth / datfile)
 
 
 # ------helper
@@ -30,6 +31,7 @@ def filter_by_date(df: pd.DataFrame, date_range: tuple):
 
 
 CRORE = 10000000
+MNTHS = [m.lower() for m in calendar.month_abbr]
 
 # ------
 ICONS = {
@@ -40,12 +42,14 @@ ICONS = {
 ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 
 with ui.sidebar(open="desktop"):
-    ui.input_selectize("mnth", "Select Month", ["Jan", "Feb"])
+    ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
     ui.input_selectize("yr", "Select Year", ["2025", "2024"])
-    # ui.input_slider("date_range","Filter by Month",
-    #            min = string_to_date("2018-3-31"),
-    #            max = string_to_date("2024-4-30"),
-    #            value = [string_to_date(x) for x in ["2018-3-31","2024-4-30"]])
+    ui.input_slider(
+        "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
+    )
+
+
+# print(df_mnth.head())
 
 # with ui.layout_column_wrap():
 with ui.layout_columns(fill=False):
@@ -53,33 +57,24 @@ with ui.layout_columns(fill=False):
         "Equity Purchased"
 
         @render.ui
-        def bght():
-            # month filter
-            last_value = (
-                df.groupby("TR_TYPE")[["VALUE"]].sum().values[0][0] / 88.2 / CRORE
-            )
-            return f"${last_value:,.0f} cr"
+        def bght1():
+            return f"${bght():,.0f} cr"
 
     with ui.value_box(showcase=ICONS["usd"]):
         "Equity Sold"
 
         @render.ui
-        def sold():
-            last_value = (
-                df.groupby("TR_TYPE")[["VALUE"]].sum().values[1][0] / 88.2 / CRORE
-            )
-            return f"${last_value:,.0f} cr"
+        def sold1():
+            return f"${sold():,.0f} cr"
 
     with ui.value_box(showcase=icon_svg("house")):
         "Net Purchase"
 
         @render.ui
         def change():
-            bght = df.groupby("TR_TYPE")[["VALUE"]].sum().values[0][0] / 88.2 / CRORE
-            sold = df.groupby("TR_TYPE")[["VALUE"]].sum().values[1][0] / 88.2 / CRORE
-            net_diff = bght - sold
-            #            sign = "+" if net_diff > 0 else "-"
-            return f"{net_diff:.0f} Cr"
+            net_diff = bght() - sold()
+            sign = "+" if net_diff > 0 else ""
+            return f"{sign}{net_diff:.0f} Cr"
 
 
 with ui.layout_columns(col_widths=[6, 6, 12]):
@@ -106,16 +101,62 @@ with ui.layout_columns(col_widths=[6, 6, 12]):
 
 @reactive.calc
 def top_5():
-    idx1 = df[df.mnth == input.mnth()].copy()
-    # return df[["ISIN", "VALUE"]].head()
-    return idx1[["ISIN", "VALUE"]].head()
+    return (
+        df[
+            (df["month"] == input.mnth())
+            & (df["TR_TYPE"] == 1)
+            & (df["year"] == int(input.yr()))
+        ]
+        .sort_values(by="VALUE", ascending=False)[["SCRIP_NAME", "ISIN"]]
+        .iloc[:5]
+    )
 
 
 @reactive.calc
 def top_5_sold():
-    idx1 = df[df.mnth == input.mnth()].copy()
-    # return df[["ISIN", "VALUE"]].head()
-    return idx1[["ISIN", "VALUE"]].head()
+    return (
+        df[
+            (df["month"] == input.mnth())
+            & (df["TR_TYPE"] == 4)
+            & (df["year"] == int(input.yr()))
+        ]
+        .sort_values(by="VALUE", ascending=False)[["SCRIP_NAME", "ISIN"]]
+        .iloc[:5]
+    )
+
+
+@reactive.calc
+def bght():
+    # month filter
+    last_value = (
+        df[
+            (df["month"] == input.mnth())
+            & (df["TR_TYPE"] == 1)
+            & (df["year"] == int(input.yr()))
+        ][["VALUE"]]
+        .sum()
+        .iloc[0]
+        / int(input.usd_inr())
+        / CRORE
+    )
+    return last_value
+
+
+@reactive.calc
+def sold():
+    # month filter
+    last_value = (
+        df[
+            (df["month"] == input.mnth())
+            & (df["TR_TYPE"] == 4)
+            & (df["year"] == int(input.yr()))
+        ][["VALUE"]]
+        .sum()
+        .iloc[0]
+        / int(input.usd_inr())
+        / CRORE
+    )
+    return last_value
 
 
 # @reactive.effect
