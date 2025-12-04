@@ -44,6 +44,14 @@ class combine_data:
             aug_df = pd.concat([aug_df, df])
         return aug_df
 
+    @staticmethod
+    def combine_csv(files: list):
+        if isinstance(files, list):
+            df_c = pd.DataFrame()
+            for fl in files:
+                df = pd.read_csv(fl)
+                df_c = pd.concat([df_c, df])
+            df_c.to_csv("fpi_combined_years.csv")
 
 if __name__ == "__main__":
 
