@@ -17,6 +17,12 @@ pth = Path("fpi_data/")
 datfile = "fpi_2024_25.csv"
 # source data for FPI flows - 2024-25
 df = pd.read_csv(pth / datfile)
+df["ISIN"] = df["ISIN"].str.strip()
+df["mf"] = df.ISIN.apply(lambda x: 1 if x[:3] == "INF" else 0)
+
+
+# ISIN list
+list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
 
 
 # ------helper
@@ -60,7 +66,9 @@ with ui.layout_columns(fill=False):
         def bght1():
             return f"${bght():,.0f} cr"
 
-    with ui.value_box(showcase=ICONS["usd"]):
+    with ui.value_box(
+        showcase=ICONS["usd"],
+    ):
         "Equity Sold"
 
         @render.ui
@@ -80,7 +88,7 @@ with ui.layout_columns(fill=False):
 with ui.layout_columns(col_widths=[6, 6, 12]):
 
     with ui.card(full_screen=True):
-        ui.card_header("Top 5 bght")
+        ui.card_header("Top 5 Stocks Bought (in value) ")
 
         @render.data_frame
         def table():
@@ -107,8 +115,14 @@ def top_5():
             & (df["TR_TYPE"] == 1)
             & (df["year"] == int(input.yr()))
         ]
-        .sort_values(by="VALUE", ascending=False)[["SCRIP_NAME", "ISIN"]]
-        .iloc[:5]
+        .groupby("ISIN")["VALUE"]
+        .sum()
+        .sort_values(ascending=False)
+        .iloc[:10]
+        .reset_index()
+        .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+            ["company_name", "ISIN"]
+        ]
     )
 
 
@@ -120,8 +134,14 @@ def top_5_sold():
             & (df["TR_TYPE"] == 4)
             & (df["year"] == int(input.yr()))
         ]
-        .sort_values(by="VALUE", ascending=False)[["SCRIP_NAME", "ISIN"]]
-        .iloc[:5]
+        .groupby("ISIN")["VALUE"]
+        .sum()
+        .sort_values(ascending=False)
+        .iloc[:10]
+        .reset_index()
+        .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+            ["company_name", "ISIN"]
+        ]
     )
 
 
