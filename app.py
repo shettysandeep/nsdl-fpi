@@ -124,25 +124,22 @@ with ui.layout_columns(col_widths=[6, 6, 12]):
 
         @render_plotly
         def overall_chart():
-            """ """
+            """ Overall chart across months """
 
-            dt = df  # for_that_mnth()
+            dt = df.copy()  # for_that_mnth()
             use_dt = (
-                dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
+                dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
-            print(dt)
-            print(dt.dtypes)
-            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                                                  string_to_date(str(x)))
-            #use_dt["date"]=pd.to_datetime(use_dt["m_y"])
-            #use_dt["date"] = pd.to_datetime(
-            #    use_dt[["month", "year"]],  # .astype(int).astype(str),
-             #   # format="%b%Y",
-            #)  # .dt.strftime("%b-%Y")
+            #print(dt.dtypes)
+            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+            #                                      string_to_date(str(x)))
+            use_dt["m_y"] = pd.to_datetime(use_dt["month"] +
+                                           use_dt["year"].astype(str), format="%b%Y").astype(str) 
             print(use_dt.head())
+            print(use_dt.dtypes)
             lineplot = px.bar(
                 data_frame=use_dt,
                 x="m_y",
@@ -171,20 +168,20 @@ with ui.layout_columns():
 
             dt = df.copy()  # for_that_mnth()
             applied_dt = dt[dt["company_name"] == input.equity()]
-            name_scrip = applied_dt.company_name.to_list()[0]
+            name_scrip = input.equity()
             # print(name_scrip)
             use_dt = (
-                applied_dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
+                applied_dt[["month", "year", "TR_TYPE", "VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
-            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                                                  string_to_date(str(x)))
-            #use_dt["m_y"] = pd.to_datetime(
-            #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
-            #    format="%b%Y",
-            #)
+            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+            #                                      string_to_date(str(x)))
+            use_dt["m_y"] = pd.to_datetime(
+                use_dt["month"] + use_dt["year"].astype(str),
+                format="%b%Y"
+            ).astype("datetime64[us]")
             lineplot = px.bar(
                 data_frame=use_dt,
                 x="m_y",
