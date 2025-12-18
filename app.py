@@ -36,12 +36,12 @@ STCK_LIST = list_isin[list_isin.instrument_type == "Equity"]["company_name"].to_
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
-df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
+#df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
 
 
 # ------helper
 def string_to_date(date_str):
-    return datetime.strptime(date_str, "%b%Y").date()
+    return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
 def filter_by_date(df: pd.DataFrame, date_range: tuple):
@@ -55,7 +55,9 @@ ICONS = {
     "usd": icon_svg("dollar-sign"),
 }
 
-# ----- Main Page
+# ------------------------
+# Main Page
+# -------------------------
 ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 
 # split the page horizontally in 2 parts - first for overall and lower for stock level
@@ -126,20 +128,24 @@ with ui.layout_columns(col_widths=[6, 6, 12]):
 
             dt = df  # for_that_mnth()
             use_dt = (
-                dt.groupby(["month", "year", "TR_TYPE"], observed=True)
+                dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
-            # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x: string_to_date(x))
-            use_dt["date"] = pd.to_datetime(
-                use_dt["month"] + use_dt["year"].astype(int).astype(str),
-                format="%b%Y",
-            )  # .dt.strftime("%b-%Y")
+            print(dt)
+            print(dt.dtypes)
+            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                                                  string_to_date(str(x)))
+            #use_dt["date"]=pd.to_datetime(use_dt["m_y"])
+            #use_dt["date"] = pd.to_datetime(
+            #    use_dt[["month", "year"]],  # .astype(int).astype(str),
+             #   # format="%b%Y",
+            #)  # .dt.strftime("%b-%Y")
             print(use_dt.head())
             lineplot = px.bar(
                 data_frame=use_dt,
-                x="date",
+                x="m_y",
                 y="VALUE",
                 color="TR_TYPE",
                 barmode="group",
@@ -168,15 +174,17 @@ with ui.layout_columns():
             name_scrip = applied_dt.company_name.to_list()[0]
             # print(name_scrip)
             use_dt = (
-                applied_dt.groupby(["month", "year", "TR_TYPE"], observed=True)
+                applied_dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
-            use_dt["m_y"] = pd.to_datetime(
-                use_dt["month"] + use_dt["year"].astype(int).astype(str),
-                format="%b%Y",
-            )
+            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                                                  string_to_date(str(x)))
+            #use_dt["m_y"] = pd.to_datetime(
+            #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
+            #    format="%b%Y",
+            #)
             lineplot = px.bar(
                 data_frame=use_dt,
                 x="m_y",
