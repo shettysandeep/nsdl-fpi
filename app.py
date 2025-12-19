@@ -60,138 +60,143 @@ ICONS = {
 # -------------------------
 ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 
-# split the page horizontally in 2 parts - first for overall and lower for stock level
-# ~~~~~~~~~~~~~~~~~~~~~~~~
+# Page 1 - Overall fpi activity ~~~~~~~~~~~~~~~~~~~~~~~~
 
-with ui.sidebar(open="desktop"):
+with ui.nav_panel("Aggregate FPI activity"):
+
+    #with ui.layout_columns():#ui.sidebar(open="desktop"):
     ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
     ui.input_selectize("yr", "Select Year", ["2025", "2024"])
     ui.input_slider(
         "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
-    )
-    ui.input_selectize("equity", "Select equity", STCK_LIST)
-
+        )
+        
 
 # with ui.layout_column_wrap():
-with ui.layout_columns(fill=False):
-    with ui.value_box(showcase=ICONS["usd"]):
-        "Equity Purchased"
+    with ui.layout_columns(fill=False):
+        with ui.value_box(showcase=ICONS["usd"]):
+            "Equity Purchased"
 
-        @render.ui
-        def bght1():
-            return f"${bght():,.0f} cr"
+            @render.ui
+            def bght1():
+                return f"${bght():,.0f} cr"
 
-    with ui.value_box(
-        showcase=ICONS["usd"],
-    ):
-        "Equity Sold"
+        with ui.value_box(
+            showcase=ICONS["usd"],
+        ):
+            "Equity Sold"
 
-        @render.ui
-        def sold1():
-            return f"${sold():,.0f} cr"
+            @render.ui
+            def sold1():
+                return f"${sold():,.0f} cr"
 
-    with ui.value_box(showcase=icon_svg("house")):
-        "Net Purchase"
+        with ui.value_box(showcase=icon_svg("house")):
+            "Net Purchase"
 
-        @render.ui
-        def change():
-            net_diff = bght() - sold()
-            sign = "+" if net_diff > 0 else ""
-            return f"{sign}{net_diff:.0f} Cr"
-
-
-with ui.layout_columns(col_widths=[6, 6, 12]):
-
-    # 1) bought top 5
-    with ui.card(full_screen=True):
-        ui.card_header("Top 5 Stocks Bought (in value) ")
-
-        @render.data_frame
-        def table():
-            return render.DataGrid(top_5())
-
-    # 2) sold top 5
-    with ui.card(full_screen=True):
-        ui.card_header("Top 5 Sold")
-
-        @render.data_frame
-        def table1():
-            return render.DataGrid(top_5_sold())
-
-    # 3) FPI activity overall
-    with ui.card():
-        ui.card_header("FPI activity in equity markets...")
-
-        @render_plotly
-        def overall_chart():
-            """ Overall chart across months """
-
-            dt = df.copy()  # for_that_mnth()
-            use_dt = (
-                dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
-                .sum("VALUE")
-                .reset_index()
-                .sort_values(by=["month", "year"], ascending=True)
-            )
-            #print(dt.dtypes)
-            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-            #                                      string_to_date(str(x)))
-            use_dt["m_y"] = pd.to_datetime(use_dt["month"] +
-                                           use_dt["year"].astype(str), format="%b%Y").astype(str) 
-            print(use_dt.head())
-            print(use_dt.dtypes)
-            lineplot = px.bar(
-                data_frame=use_dt,
-                x="m_y",
-                y="VALUE",
-                color="TR_TYPE",
-                barmode="group",
-                title="FPI activity across months in Secondary markets",
-                labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-            )
-            return lineplot
+            @render.ui
+            def change():
+                net_diff = bght() - sold()
+                sign = "+" if net_diff > 0 else ""
+                return f"{sign}{net_diff:.0f} Cr"
 
 
-with ui.layout_columns():
-    # 1) Stock level chart --
-    with ui.card():
-        ui.card_header("FPI activity in stock...")
+    with ui.layout_columns(col_widths=[3, 3, 6]):
 
-        @render_plotly
-        def stock_chart():
-            """
-            Stock specific charts of inflow and outflow
+        # 1) bought top 5
+        with ui.card(full_screen=True):
+            ui.card_header("Top 5 Stocks Bought (in value) ")
 
-            :param stock_name: "Name of stock selected from dropdown.
-            Combine the name and ISIN in a tuple
-            """
+            @render.data_frame
+            def table():
+                return render.DataGrid(top_5())
 
-            dt = df.copy()  # for_that_mnth()
-            applied_dt = dt[dt["company_name"] == input.equity()]
-            name_scrip = input.equity()
-            # print(name_scrip)
-            use_dt = (
-                applied_dt[["month", "year", "TR_TYPE", "VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
-                .sum("VALUE")
-                .reset_index()
-                .sort_values(by=["month", "year"], ascending=True)
-            )
-            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-            #                                      string_to_date(str(x)))
-            use_dt["m_y"] = pd.to_datetime(
-                use_dt["month"] + use_dt["year"].astype(str),
-                format="%b%Y"
-            ).astype("datetime64[us]")
-            lineplot = px.bar(
-                data_frame=use_dt,
-                x="m_y",
-                y="VALUE",
-                color="TR_TYPE",
-                barmode="group",
-                title=name_scrip,
-                labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-            )
-            return lineplot
+        # 2) sold top 5
+        with ui.card(full_screen=True):
+            ui.card_header("Top 5 Sold")
+
+            @render.data_frame
+            def table1():
+                return render.DataGrid(top_5_sold())
+
+        # 3) FPI activity overall
+        with ui.card():
+            ui.card_header("FPI activity in equity markets...")
+
+            @render_plotly
+            def overall_chart():
+                """ Overall chart across months """
+
+                dt = df.copy()  # for_that_mnth()
+                use_dt = (
+                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
+                    .sum("VALUE")
+                    .reset_index()
+                    .sort_values(by=["month", "year"], ascending=True)
+                )
+                #print(dt.dtypes)
+                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                #                                      string_to_date(str(x)))
+                use_dt["m_y"] = pd.to_datetime(use_dt["month"] +
+                                            use_dt["year"].astype(str), format="%b%Y").astype(str) 
+                print(use_dt.head())
+                print(use_dt.dtypes)
+                lineplot = px.bar(
+                    data_frame=use_dt,
+                    x="m_y",
+                    y="VALUE",
+                    color="TR_TYPE",
+                    barmode="group",
+                    title="FPI activity across months in Secondary markets",
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                return lineplot
+
+#----------Page 2 - Stock level 
+
+with ui.nav_panel("Stock level"):
+
+    ui.input_selectize("equity", "Select equity", STCK_LIST)
+
+    with ui.layout_columns():
+        # 1) Stock level chart --
+        with ui.card():
+            ui.card_header("FPI activity in stock...")
+
+            @render_plotly
+            def stock_chart():
+                """
+                Stock specific charts of inflow and outflow
+
+                :param stock_name: "Name of stock selected from dropdown.
+                Combine the name and ISIN in a tuple
+                """
+
+                dt = df.copy()  # for_that_mnth()
+                applied_dt = dt[dt["company_name"] == input.equity()]
+                name_scrip = input.equity()
+                # print(name_scrip)
+                use_dt = (
+                    applied_dt[["month", "year", "TR_TYPE", "VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
+                    .sum("VALUE")
+                    .reset_index()
+                    .sort_values(by=["month", "year"], ascending=True)
+                )
+                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                #                                      string_to_date(str(x)))
+                use_dt["m_y"] = pd.to_datetime(
+                    use_dt["month"] + use_dt["year"].astype(str),
+                    format="%b%Y"
+                ).astype("datetime64[us]")
+                lineplot = px.bar(
+                    data_frame=use_dt,
+                    x="m_y",
+                    y="VALUE",
+                    color="TR_TYPE",
+                    barmode="group",
+                    title=name_scrip,
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                return lineplot
 
 
 # --------------------------------------------------------
