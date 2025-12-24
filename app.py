@@ -128,24 +128,24 @@ with ui.layout_columns(col_widths=[6, 6, 12]):
 
             dt = df  # for_that_mnth()
             use_dt = (
-                dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
+                dt[["month", "year", "TR_TYPE", "TR_DATE","VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
             print(dt)
             print(dt.dtypes)
-            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                                                  string_to_date(str(x)))
+            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+            #                                      string_to_date(str(x)))
             #use_dt["date"]=pd.to_datetime(use_dt["m_y"])
             #use_dt["date"] = pd.to_datetime(
-            #    use_dt[["month", "year"]],  # .astype(int).astype(str),
-             #   # format="%b%Y",
+            #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
+            #    format="%b%Y",
             #)  # .dt.strftime("%b-%Y")
             print(use_dt.head())
             lineplot = px.bar(
                 data_frame=use_dt,
-                x="m_y",
+                x="TR_DATE",
                 y="VALUE",
                 color="TR_TYPE",
                 barmode="group",
@@ -181,13 +181,14 @@ with ui.layout_columns():
             )
             use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
                                                   string_to_date(str(x)))
+            print(use_dt)
             #use_dt["m_y"] = pd.to_datetime(
             #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
             #    format="%b%Y",
             #)
             lineplot = px.bar(
                 data_frame=use_dt,
-                x="m_y",
+                x="TR_DATE",
                 y="VALUE",
                 color="TR_TYPE",
                 barmode="group",
