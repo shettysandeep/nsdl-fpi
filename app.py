@@ -36,7 +36,7 @@ STCK_LIST = list_isin[list_isin.instrument_type == "Equity"]["company_name"].to_
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
-#df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
+# df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
 
 
 # ------helper
@@ -64,15 +64,14 @@ ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 
 with ui.nav_panel("Aggregate FPI activity"):
 
-    #with ui.layout_columns():#ui.sidebar(open="desktop"):
+    # with ui.layout_columns():#ui.sidebar(open="desktop"):
     ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
     ui.input_selectize("yr", "Select Year", ["2025", "2024"])
     ui.input_slider(
         "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
-        )
-        
+    )
 
-# with ui.layout_column_wrap():
+    # with ui.layout_column_wrap():
     with ui.layout_columns(fill=False):
         with ui.value_box(showcase=ICONS["usd"]):
             "Equity Purchased"
@@ -99,7 +98,6 @@ with ui.nav_panel("Aggregate FPI activity"):
                 sign = "+" if net_diff > 0 else ""
                 return f"{sign}{net_diff:.0f} Cr"
 
-
     with ui.layout_columns(col_widths=[3, 3, 6]):
 
         # 1) bought top 5
@@ -124,29 +122,27 @@ with ui.nav_panel("Aggregate FPI activity"):
 
             @render_plotly
             def overall_chart():
-                """ Overall chart across months """
+                """Overall chart across months"""
 
-<<<<<<< HEAD
             dt = df  # for_that_mnth()
             use_dt = (
-                dt[["month", "year", "TR_TYPE", "TR_DATE","VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
+                dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
             print(dt)
             print(dt.dtypes)
-            #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-            #                                      string_to_date(str(x)))
-            #use_dt["date"]=pd.to_datetime(use_dt["m_y"])
-            #use_dt["date"] = pd.to_datetime(
-            #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
-            #    format="%b%Y",
-            #)  # .dt.strftime("%b-%Y")
+            use_dt["m_y"] = use_dt["TR_DATE"].apply(lambda x: string_to_date(str(x)))
+            # use_dt["date"]=pd.to_datetime(use_dt["m_y"])
+            # use_dt["date"] = pd.to_datetime(
+            #    use_dt[["month", "year"]],  # .astype(int).astype(str),
+            #   # format="%b%Y",
+            # )  # .dt.strftime("%b-%Y")
             print(use_dt.head())
             lineplot = px.bar(
                 data_frame=use_dt,
-                x="TR_DATE",
+                x="m_y",
                 y="VALUE",
                 color="TR_TYPE",
                 barmode="group",
@@ -154,65 +150,41 @@ with ui.nav_panel("Aggregate FPI activity"):
                 labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
             )
             return lineplot
-=======
-                dt = df.copy()  # for_that_mnth()
-                use_dt = (
-                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
-                    .sum("VALUE")
-                    .reset_index()
-                    .sort_values(by=["month", "year"], ascending=True)
-                )
-                #print(dt.dtypes)
-                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                #                                      string_to_date(str(x)))
-                use_dt["m_y"] = pd.to_datetime(use_dt["month"] +
-                                            use_dt["year"].astype(str), format="%b%Y").astype(str) 
-                print(use_dt.head())
-                print(use_dt.dtypes)
-                lineplot = px.bar(
-                    data_frame=use_dt,
-                    x="m_y",
-                    y="VALUE",
-                    color="TR_TYPE",
-                    barmode="group",
-                    title="FPI activity across months in Secondary markets",
-                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-                )
-                return lineplot
->>>>>>> 2a6e229a55a390513315213b9b136c83ef79fb46
-
-#----------Page 2 - Stock level 
-
-with ui.nav_panel("Stock level"):
-
-    ui.input_selectize("equity", "Select equity", STCK_LIST)
 
     with ui.layout_columns():
         # 1) Stock level chart --
         with ui.card():
             ui.card_header("FPI activity in stock...")
 
-<<<<<<< HEAD
+        @render_plotly
+        def stock_chart():
+            """
+            Stock specific charts of inflow and outflow
+
+            :param stock_name: "Name of stock selected from dropdown.
+            Combine the name and ISIN in a tuple
+            """
+
             dt = df.copy()  # for_that_mnth()
             applied_dt = dt[dt["company_name"] == input.equity()]
             name_scrip = applied_dt.company_name.to_list()[0]
             # print(name_scrip)
             use_dt = (
-                applied_dt.groupby(["month", "year", "TR_TYPE", "TR_DATE"], observed=True)
+                applied_dt.groupby(
+                    ["month", "year", "TR_TYPE", "TR_DATE"], observed=True
+                )
                 .sum("VALUE")
                 .reset_index()
                 .sort_values(by=["month", "year"], ascending=True)
             )
-            use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                                                  string_to_date(str(x)))
-            print(use_dt)
-            #use_dt["m_y"] = pd.to_datetime(
+            use_dt["m_y"] = use_dt["TR_DATE"].apply(lambda x: string_to_date(str(x)))
+            # use_dt["m_y"] = pd.to_datetime(
             #    use_dt["month"] + use_dt["year"].astype(int).astype(str),
             #    format="%b%Y",
-            #)
+            # )
             lineplot = px.bar(
                 data_frame=use_dt,
-                x="TR_DATE",
+                x="m_y",
                 y="VALUE",
                 color="TR_TYPE",
                 barmode="group",
@@ -220,43 +192,6 @@ with ui.nav_panel("Stock level"):
                 labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
             )
             return lineplot
-=======
-            @render_plotly
-            def stock_chart():
-                """
-                Stock specific charts of inflow and outflow
-
-                :param stock_name: "Name of stock selected from dropdown.
-                Combine the name and ISIN in a tuple
-                """
-
-                dt = df.copy()  # for_that_mnth()
-                applied_dt = dt[dt["company_name"] == input.equity()]
-                name_scrip = input.equity()
-                # print(name_scrip)
-                use_dt = (
-                    applied_dt[["month", "year", "TR_TYPE", "VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
-                    .sum("VALUE")
-                    .reset_index()
-                    .sort_values(by=["month", "year"], ascending=True)
-                )
-                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                #                                      string_to_date(str(x)))
-                use_dt["m_y"] = pd.to_datetime(
-                    use_dt["month"] + use_dt["year"].astype(str),
-                    format="%b%Y"
-                ).astype("datetime64[us]")
-                lineplot = px.bar(
-                    data_frame=use_dt,
-                    x="m_y",
-                    y="VALUE",
-                    color="TR_TYPE",
-                    barmode="group",
-                    title=name_scrip,
-                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-                )
-                return lineplot
->>>>>>> 2a6e229a55a390513315213b9b136c83ef79fb46
 
 
 # --------------------------------------------------------
