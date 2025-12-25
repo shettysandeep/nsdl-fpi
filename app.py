@@ -136,8 +136,14 @@ with ui.nav_panel("Aggregate FPI activity"):
 
             @render.data_frame
             def table():
-                d1 = net_stock()
-                print(d1.head())
+                f_df = net_stock()
+                d1 = (
+                    f_df[(f_df["month"] == "jan") & (f_df["year"] == 2024)]
+                    .sort_values("net_crores")[["company_name", "net_crores"]]
+                    .iloc[-5:]
+                    .sort_values("net_crores", ascending=False)
+                )
+                # print(d1.head())
                 return render.DataGrid(d1)
                 # return render.DataGrid(top_5())
 
@@ -316,8 +322,7 @@ def sold():
 
 @reactive.calc
 def mnthly_net():
-    print(f"inside {mnthly_net.__name__}")
-    print(df.head())
+    """Returns dataframe with net positions at monthly level"""
     df_wide = (
         df.pivot_table(
             index=["TR_DATE", "month", "year"],
@@ -329,14 +334,14 @@ def mnthly_net():
         .rename(columns={1: "Buy", 4: "Sell"})
         .reset_index()
     )
+    cols_to_fill = ["Buy", "Sell"]
+    df_wide[cols_to_fill] = df_wide[cols_to_fill].fillna(0)
+    df_wide["net_crores"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 2)
+    # df_wide["net"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 0)
 
-    df_wide["net"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 0)
-
-    df_wide["Color_Group"] = df_wide["net"].apply(
+    df_wide["Color_Group"] = df_wide["net_crores"].apply(
         lambda x: "Positive" if x >= 0 else "Negative"
     )
-    print(df_wide.head())
-    print(f"Outside {mnthly_net.__name__}")
     return df_wide
 
 
@@ -354,7 +359,13 @@ def net_stock():
         .rename(columns={1: "Buy", 4: "Sell"})
         .reset_index()
     )
-
-    df_wide["net_crores"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 0)
-
-    return df_wide
+    cols_to_fill = ["Buy", "Sell"]
+    df_wide[cols_to_fill] = df_wide[cols_to_fill].fillna(0)
+    df_wide["net_crores"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 2)
+    f_df = (
+        df_wide.groupby(["company_name", "month", "year"])
+        .sum("net_crores")
+        .sort_values(by="net_crores", ascending=True)
+        .reset_index()
+    )
+    return f_df
