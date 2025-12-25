@@ -9,6 +9,7 @@ from faicons import icon_svg
 from pathlib import Path
 
 import pandas as pd
+import numpy as np
 import calendar
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -36,7 +37,7 @@ STCK_LIST = list_isin[list_isin.instrument_type == "Equity"]["company_name"].to_
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
-#df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
+# df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
 
 
 # ------helper
@@ -63,16 +64,14 @@ ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 # Page 1 - Overall fpi activity ~~~~~~~~~~~~~~~~~~~~~~~~
 
 with ui.nav_panel("Aggregate FPI activity"):
-
-    #with ui.layout_columns():#ui.sidebar(open="desktop"):
+    # with ui.layout_columns():#ui.sidebar(open="desktop"):
     ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
     ui.input_selectize("yr", "Select Year", ["2025", "2024"])
     ui.input_slider(
         "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
-        )
-        
+    )
 
-# with ui.layout_column_wrap():
+    # with ui.layout_column_wrap():
     with ui.layout_columns(fill=False):
         with ui.value_box(showcase=ICONS["usd"]):
             "Equity Purchased"
@@ -99,9 +98,37 @@ with ui.nav_panel("Aggregate FPI activity"):
                 sign = "+" if net_diff > 0 else ""
                 return f"{sign}{net_diff:.0f} Cr"
 
+    # Top 10 by net position in a given month.
+
+    with ui.card():
+        ui.card_header("Net purchases (Daily)")
+
+        @render_plotly
+        def mnthly_overall_within():
+            df_wide = mnthly_net()  # table from below.
+            df_use = df_wide[
+                (df_wide["month"] == input.mnth()) & (df_wide["year"] ==
+                                                      int(input.yr()))]
+            print("inside monthly within line 113 \n")
+            print(df_use.month.value_counts())
+            lineplot = px.bar(
+                data_frame=df_use,
+                x="TR_DATE",
+                y="net",
+                color="Color_Group",  # "TR_TYPE",
+                color_discrete_map={"Positive": "green", "Negative": "red"},
+                facet_col='year',
+                # barmode="group",
+                # title=name_scrip,
+                labels={
+                    "Color_Group": "",
+                    "net": "Net Position (Rs. crore)",
+                    "TR_DATE": f"{input.mnth()} {input.yr()}",
+                },
+            )
+            return lineplot
 
     with ui.layout_columns(col_widths=[3, 3, 6]):
-
         # 1) bought top 5
         with ui.card(full_screen=True):
             ui.card_header("Top 5 Stocks Bought (in value) ")
@@ -124,22 +151,24 @@ with ui.nav_panel("Aggregate FPI activity"):
 
             @render_plotly
             def overall_chart():
-                """ Overall chart across months """
+                """Overall chart across months"""
 
                 dt = df.copy()  # for_that_mnth()
                 use_dt = (
-                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
+                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
+                    .groupby(["month", "year", "TR_TYPE"], observed=True)
                     .sum("VALUE")
                     .reset_index()
                     .sort_values(by=["month", "year"], ascending=True)
                 )
-                #print(dt.dtypes)
-                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                # print(dt.dtypes)
+                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
                 #                                      string_to_date(str(x)))
-                use_dt["m_y"] = pd.to_datetime(use_dt["month"] +
-                                            use_dt["year"].astype(str), format="%b%Y").astype(str) 
-                print(use_dt.head())
-                print(use_dt.dtypes)
+                use_dt["m_y"] = pd.to_datetime(
+                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+                ).astype(str)
+                # print(use_dt.head())
+                # print(use_dt.dtypes)
                 lineplot = px.bar(
                     data_frame=use_dt,
                     x="m_y",
@@ -151,10 +180,10 @@ with ui.nav_panel("Aggregate FPI activity"):
                 )
                 return lineplot
 
-#----------Page 2 - Stock level 
+
+# ----------Page 2 - Stock level
 
 with ui.nav_panel("Stock level"):
-
     ui.input_selectize("equity", "Select equity", STCK_LIST)
 
     with ui.layout_columns():
@@ -176,16 +205,16 @@ with ui.nav_panel("Stock level"):
                 name_scrip = input.equity()
                 # print(name_scrip)
                 use_dt = (
-                    applied_dt[["month", "year", "TR_TYPE", "VALUE"]].groupby(["month", "year", "TR_TYPE"], observed=True)
+                    applied_dt[["month", "year", "TR_TYPE", "VALUE"]]
+                    .groupby(["month", "year", "TR_TYPE"], observed=True)
                     .sum("VALUE")
                     .reset_index()
                     .sort_values(by=["month", "year"], ascending=True)
                 )
-                #use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
                 #                                      string_to_date(str(x)))
                 use_dt["m_y"] = pd.to_datetime(
-                    use_dt["month"] + use_dt["year"].astype(str),
-                    format="%b%Y"
+                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
                 ).astype("datetime64[us]")
                 lineplot = px.bar(
                     data_frame=use_dt,
@@ -274,6 +303,33 @@ def sold():
         / CRORE
     )
     return last_value
+
+
+# Data for net positions
+@reactive.calc
+def mnthly_net():
+    print(f"inside {mnthly_net.__name__}")
+    print(df.head())
+    df_wide = (
+        df.pivot_table(
+            index=["TR_DATE", "month", "year"],
+            columns="TR_TYPE",
+            values="VALUE",
+            aggfunc="sum",
+            observed=True,
+        )
+        .rename(columns={1: "Buy", 4: "Sell"})
+        .reset_index()
+    )
+
+    df_wide["net"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 0)
+
+    df_wide["Color_Group"] = df_wide["net"].apply(
+        lambda x: "Positive" if x >= 0 else "Negative"
+    )
+    print(df_wide.head())
+    print(f"Outside {mnthly_net.__name__}")
+    return df_wide
 
 
 # @reactive.effect
