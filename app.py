@@ -11,9 +11,7 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 import calendar
-import pyarrow as pa
 import pyarrow.parquet as pq
-import sys
 
 CRORE = 10000000
 MNTHS = [m.lower() for m in calendar.month_abbr]
@@ -30,7 +28,9 @@ print("~~~~\n")
 
 # ISIN list
 list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
-STCK_LIST = list_isin[list_isin.instrument_type == "Equity"]["company_name"].to_list()
+STCK_LIST: list[Any] = list_isin[list_isin.instrument_type == "Equity"][
+    "company_name"
+].to_list()
 
 
 # ~~Transaction type - buy or sell only
@@ -107,8 +107,9 @@ with ui.nav_panel("Aggregate FPI activity"):
         def mnthly_overall_within():
             df_wide = mnthly_net()  # table from below.
             df_use = df_wide[
-                (df_wide["month"] == input.mnth()) & (df_wide["year"] ==
-                                                      int(input.yr()))]
+                (df_wide["month"] == input.mnth())
+                & (df_wide["year"] == int(input.yr()))
+            ]
             print("inside monthly within line 113 \n")
             print(df_use.month.value_counts())
             lineplot = px.bar(
@@ -117,7 +118,7 @@ with ui.nav_panel("Aggregate FPI activity"):
                 y="net",
                 color="Color_Group",  # "TR_TYPE",
                 color_discrete_map={"Positive": "green", "Negative": "red"},
-                facet_col='year',
+                facet_col="year",
                 # barmode="group",
                 # title=name_scrip,
                 labels={
@@ -129,13 +130,16 @@ with ui.nav_panel("Aggregate FPI activity"):
             return lineplot
 
     with ui.layout_columns(col_widths=[3, 3, 6]):
-        # 1) bought top 5
+        # 1) bought top 5 by net purchases.
         with ui.card(full_screen=True):
-            ui.card_header("Top 5 Stocks Bought (in value) ")
+            ui.card_header("Top 5 Stocks Net Purchase (in value) ")
 
             @render.data_frame
             def table():
-                return render.DataGrid(top_5())
+                d1 = net_stock()
+                print(d1.head())
+                return render.DataGrid(d1)
+                # return render.DataGrid(top_5())
 
         # 2) sold top 5
         with ui.card(full_screen=True):
@@ -233,8 +237,12 @@ with ui.nav_panel("Stock level"):
 # --------------------------------------------------------
 
 
+# net buying by stocks
 @reactive.calc
 def top_5():
+    """Obtain Net position by month & year across all funds.
+    Return a table with the top 5 or 10 by (positive) net position.
+    """
     return (
         df[
             (df["month"] == input.mnth())
@@ -254,6 +262,7 @@ def top_5():
 
 @reactive.calc
 def top_5_sold():
+    """Returns the list of top 5 bought by value"""
     return (
         df[
             (df["month"] == input.mnth())
@@ -305,7 +314,6 @@ def sold():
     return last_value
 
 
-# Data for net positions
 @reactive.calc
 def mnthly_net():
     print(f"inside {mnthly_net.__name__}")
@@ -332,11 +340,21 @@ def mnthly_net():
     return df_wide
 
 
-# @reactive.effect
-# @reactive.event(input.reset)
-# def _():
-#    ui.update_slider("total_bill", value=bill_rng)
-#    ui.update_checkbox_group("time", selected=["Lunch", "Dinner"])
+@reactive.calc
+def net_stock():
+    """Returns dataframe with net positions at {stock-month} level"""
+    df_wide = (
+        df.pivot_table(  # type: ignore
+            index=["TR_DATE", "month", "year", "company_name"],
+            columns="TR_TYPE",
+            values="VALUE",
+            aggfunc="sum",
+            observed=True,
+        )
+        .rename(columns={1: "Buy", 4: "Sell"})
+        .reset_index()
+    )
 
+    df_wide["net_crores"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 0)
 
-# insert plot with bar for buy and sale across months
+    return df_wide
