@@ -115,7 +115,7 @@ with ui.nav_panel("Aggregate FPI activity"):
             lineplot = px.bar(
                 data_frame=df_use,
                 x="TR_DATE",
-                y="net",
+                y="net_crores",
                 color="Color_Group",  # "TR_TYPE",
                 color_discrete_map={"Positive": "green", "Negative": "red"},
                 facet_col="year",
@@ -132,28 +132,34 @@ with ui.nav_panel("Aggregate FPI activity"):
     with ui.layout_columns(col_widths=[3, 3, 6]):
         # 1) bought top 5 by net purchases.
         with ui.card(full_screen=True):
-            ui.card_header("Top 5 Stocks Net Purchase (in value) ")
+            ui.card_header("Top 5 Stocks Net Purchase (Rs. crores) ")
 
             @render.data_frame
             def table():
                 f_df = net_stock()
                 d1 = (
-                    f_df[(f_df["month"] == "jan") & (f_df["year"] == 2024)]
+                    f_df[(f_df["month"] == input.mnth()) & (f_df["year"] ==
+                                                            int(input.yr()))]
                     .sort_values("net_crores")[["company_name", "net_crores"]]
                     .iloc[-5:]
                     .sort_values("net_crores", ascending=False)
                 )
-                # print(d1.head())
                 return render.DataGrid(d1)
-                # return render.DataGrid(top_5())
 
         # 2) sold top 5
         with ui.card(full_screen=True):
-            ui.card_header("Top 5 Sold")
+            ui.card_header("Top 5 Stock Net Sold (Rs. crores)")
 
             @render.data_frame
             def table1():
-                return render.DataGrid(top_5_sold())
+                f_df = net_stock()
+                d1 = (
+                    f_df[(f_df["month"] == input.mnth()) & (f_df["year"] ==
+                                                            int(input.yr()))]
+                    .sort_values("net_crores")[["company_name", "net_crores"]]
+                    .iloc[:5]
+                )
+                return render.DataGrid(d1)
 
         # 3) FPI activity overall
         with ui.card():
@@ -361,7 +367,8 @@ def net_stock():
     )
     cols_to_fill = ["Buy", "Sell"]
     df_wide[cols_to_fill] = df_wide[cols_to_fill].fillna(0)
-    df_wide["net_crores"] = np.round((df_wide["Buy"] - df_wide["Sell"]) / 10000000, 2)
+    df_wide["net_crores"] = (df_wide["Buy"] - df_wide["Sell"]) / 10000000
+    df_wide["net_crores"] = df_wide["net_crores"].round(2)
     f_df = (
         df_wide.groupby(["company_name", "month", "year"])
         .sum("net_crores")
