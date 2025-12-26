@@ -1,7 +1,7 @@
 from shiny import reactive  # , req
 from shiny.express import input, ui, render
 from shinywidgets import render_plotly
-
+from pathlib import Path
 import plotly.express as px
 
 from datetime import datetime
@@ -15,6 +15,13 @@ import pyarrow.parquet as pq
 
 CRORE = 10000000
 MNTHS = [m.lower() for m in calendar.month_abbr]
+#mnth_u = [m for m in calendar.Month]
+#print(mnth_u)
+
+www_dir = Path(__file__).parent / "www"
+
+COL_NAMES =["Company","Net Purchase"]
+#print(www_dir)
 
 pth = Path("fpi_data/")
 datfile = "fpi_2024_2025.parquet"
@@ -38,7 +45,7 @@ df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
 # df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
-
+df = df[(df["instrument_type"]=="Equity")]
 
 # ------helper
 def string_to_date(date_str):
@@ -51,11 +58,17 @@ def filter_by_date(df: pd.DataFrame, date_range: tuple):
     return df[(dates >= rng[0]) & (dates <= rng[1])]
 
 
-# ------
+# -----IMAGES/ICONS-
 ICONS = {
     "usd": icon_svg("dollar-sign"),
 }
 
+inr=ui.tags.img(src="rupee.png", height="50px", width="50px") # ununsed
+inr_bl=ui.tags.img(src="dark_inr1.png", height="50px", width="50px") # buy
+inr_wh=ui.tags.img(src="white_inr1.png", height="50px", width="50px") # sale
+inr_io=ui.tags.img(src="inf_outf.png", height="50px", width="50px") # net
+
+#   
 # ------------------------
 # Main Page
 # -------------------------
@@ -67,36 +80,36 @@ with ui.nav_panel("Aggregate FPI activity"):
     # with ui.layout_columns():#ui.sidebar(open="desktop"):
     ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
     ui.input_selectize("yr", "Select Year", ["2025", "2024"])
-    ui.input_slider(
-        "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
-    )
+    #ui.input_slider(
+    #    "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
+    #)
 
     # with ui.layout_column_wrap():
     with ui.layout_columns(fill=False):
-        with ui.value_box(showcase=ICONS["usd"]):
-            "Equity Purchased"
+        with ui.value_box(showcase=inr_bl): #ICONS["usd"]):
+            "Equity Purchased (Rs. Crores)"
 
             @render.ui
             def bght1():
-                return f"${bght():,.0f} cr"
+                return f"{bght():,.0f}"
 
         with ui.value_box(
-            showcase=ICONS["usd"],
+            showcase=inr_wh, #ICONS["usd"],
         ):
-            "Equity Sold"
+            "Equity Sold (Rs. Crores)"
 
             @render.ui
             def sold1():
-                return f"${sold():,.0f} cr"
+                return f"{sold():,.0f}"
 
-        with ui.value_box(showcase=icon_svg("house")):
-            "Net Purchase"
+        with ui.value_box(showcase=inr_io): #icon_svg("house")):
+            "Net Purchase (Rs. Crores)"
 
             @render.ui
             def change():
                 net_diff = bght() - sold()
                 sign = "+" if net_diff > 0 else ""
-                return f"{sign}{net_diff:.0f} Cr"
+                return f"{sign}{net_diff:,.0f}"
 
     # Top 10 by net position in a given month.
 
@@ -110,8 +123,8 @@ with ui.nav_panel("Aggregate FPI activity"):
                 (df_wide["month"] == input.mnth())
                 & (df_wide["year"] == int(input.yr()))
             ]
-            print("inside monthly within line 113 \n")
-            print(df_use.month.value_counts())
+            #print("inside monthly within line 113 \n")
+            #print(df_use.month.value_counts())
             lineplot = px.bar(
                 data_frame=df_use,
                 x="TR_DATE",
@@ -120,10 +133,10 @@ with ui.nav_panel("Aggregate FPI activity"):
                 color_discrete_map={"Positive": "green", "Negative": "red"},
                 facet_col="year",
                 # barmode="group",
-                # title=name_scrip,
+                title= "", #f"Net Purchases in {input.mnth()}",
                 labels={
                     "Color_Group": "",
-                    "net": "Net Position (Rs. crore)",
+                    "net_crores": "Net purchase (Rs. crore)",
                     "TR_DATE": f"{input.mnth()} {input.yr()}",
                 },
             )
@@ -140,15 +153,16 @@ with ui.nav_panel("Aggregate FPI activity"):
                 d1 = (
                     f_df[(f_df["month"] == input.mnth()) & (f_df["year"] ==
                                                             int(input.yr()))]
-                    .sort_values("net_crores")[["company_name", "net_crores"]]
-                    .iloc[-5:]
-                    .sort_values("net_crores", ascending=False)
+                    .sort_values("net_crores", ascending=False)[["company_name", "net_crores"]]
+                    .iloc[:5]
                 )
+                d1["net_crores"]=d1["net_crores"].round(1).astype(str)
+                d1.columns = COL_NAMES
                 return render.DataGrid(d1)
 
         # 2) sold top 5
         with ui.card(full_screen=True):
-            ui.card_header("Top 5 Stock Net Sold (Rs. crores)")
+            ui.card_header("Top 5 Stocks Net Sold (Rs. crores)")
 
             @render.data_frame
             def table1():
@@ -159,6 +173,8 @@ with ui.nav_panel("Aggregate FPI activity"):
                     .sort_values("net_crores")[["company_name", "net_crores"]]
                     .iloc[:5]
                 )
+                d1["net_crores"]=d1["net_crores"].round(1).astype(str)
+                d1.columns = COL_NAMES
                 return render.DataGrid(d1)
 
         # 3) FPI activity overall
@@ -303,7 +319,7 @@ def bght():
         ][["VALUE"]]
         .sum()
         .iloc[0]
-        / int(input.usd_inr())
+        / 1 #int(input.usd_inr())
         / CRORE
     )
     return last_value
@@ -320,7 +336,7 @@ def sold():
         ][["VALUE"]]
         .sum()
         .iloc[0]
-        / int(input.usd_inr())
+        / 1 #int(input.usd_inr())
         / CRORE
     )
     return last_value
