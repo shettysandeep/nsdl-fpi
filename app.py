@@ -5,6 +5,7 @@ from pathlib import Path
 import plotly.express as px
 from shiny.ui import tags
 from datetime import datetime
+
 # from faicons import icon_svg
 
 import pandas as pd
@@ -14,13 +15,10 @@ import pyarrow.parquet as pq
 
 CRORE = 10000000
 MNTHS = [m.lower() for m in calendar.month_abbr]
-# mnth_u = [m for m in calendar.Month]
-# print(mnth_u)
 
 www_dir = Path(__file__).parent / "www"
 
 COL_NAMES = ["Company", "Net Purchase"]
-# print(www_dir)
 
 pth = Path("fpi_data/")
 datfile = "fpi_2024_2025.parquet"
@@ -34,16 +32,20 @@ print("~~~~\n")
 
 # ISIN list
 list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
+
 STCK_LIST: list[str] = list_isin[list_isin.instrument_type == "Equity"][
     "company_name"
 ].tolist()
+
+del list_isin  # remove this table
 
 
 # ~~Transaction type - buy or sell only
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
-# df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
+
+# Keep Equity Only
 df = df[(df["instrument_type"] == "Equity")]
 
 
@@ -150,7 +152,7 @@ with ui.nav_panel("Aggregate FPI activity"):
 
         # 2) sold top 5
         with ui.card(full_screen=True):
-            ui.card_header("Top 5: Net Purchase <0 (Rs. crores)")
+            ui.card_header("Top 5: Net Purchase < 0 (Rs. crores)")
 
             @render.data_frame
             def table1():
@@ -241,32 +243,34 @@ with ui.nav_panel("Aggregate FPI activity"):
             def monthly_agg_chart():
                 """Net purchase monthly"""
 
-                dt = df.copy()  # for_that_mnth()
-                use_dt = (
-                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
-                    .groupby(["month", "year", "TR_TYPE"], observed=True)
-                    .sum("VALUE")
+                dt = mnthly_net()
+                f_df = (
+                    dt.groupby(["month", "year"])
+                    .sum("net_crores")
+                    .sort_values(by="net_crores", ascending=True)
                     .reset_index()
-                    .sort_values(by=["month", "year"], ascending=True)
                 )
-                # print(dt.dtypes)
-                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                #                                      string_to_date(str(x)))
-                use_dt["m_y"] = pd.to_datetime(
-                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+                f_df["m_y"] = pd.to_datetime(
+                    f_df["month"] + f_df["year"].astype(str), format="%b%Y"
                 ).astype(str)
-                # print(use_dt.head())
-                # print(use_dt.dtypes)
+                f_df["Color_Group"] = f_df["net_crores"].apply(
+                    lambda x: "Positive" if x >= 0 else "Negative"
+                )
+
                 lineplot = px.bar(
-                    data_frame=use_dt,
+                    data_frame=f_df,
                     x="m_y",
-                    y="VALUE",
-                    color="TR_TYPE",
-                    barmode="group",
+                    y="net_crores",
+                    color="Color_Group",  # "TR_TYPE",
+                    color_discrete_map={"Positive": "green", "Negative": "red"},
+                    # color="TR_TYPE",
+                    # barmode="group",
                     title="",
                     labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
                 )
                 return lineplot
+
+
 # ----------Page 2 - Stock level
 
 with ui.nav_panel("Stock level"):
@@ -313,6 +317,53 @@ with ui.nav_panel("Stock level"):
                 )
                 return lineplot
 
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+        # Monthly net purchases in stocks
+        # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+        with ui.card():
+            ui.card_header("FPI activity in monthly net positions")
+
+            @render_plotly
+            def stock_chart_net():
+                """
+                Stock specific charts of inflow and outflow
+
+                :param stock_name: "Name of stock selected from dropdown.
+                Combine the name and ISIN in a tuple
+                """
+                dt = net_stock()
+                # dt = df.copy()  # for_that_mnth()
+                applied_dt = dt[dt["company_name"] == input.equity()]
+                name_scrip = input.equity()
+                # print(name_scrip)
+                use_dt = (
+                    applied_dt[["month", "year", "net_crores"]]
+                    .groupby(["month", "year"], observed=True)
+                    .sum("net_crores")
+                    .reset_index()
+                    .sort_values(by=["month", "year"], ascending=True)
+                )
+                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                #                                      string_to_date(str(x)))
+                use_dt["m_y"] = pd.to_datetime(
+                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+                ).astype("datetime64[us]")
+
+                use_dt["Color_Group"] = use_dt["net_crores"].apply(
+                    lambda x: "Positive" if x >= 0 else "Negative"
+                )
+
+                lineplot = px.bar(
+                    data_frame=use_dt,
+                    x="m_y",
+                    y="net_crores",
+                    color="Color_Group",  # "TR_TYPE",
+                    color_discrete_map={"Positive": "green", "Negative": "red"},
+                    title="{} - monthly FPI net purchases".format(input.equity()),
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                return lineplot
+
 
 # --------------------------------------------------------
 # Reactive calculations and effects
@@ -320,46 +371,47 @@ with ui.nav_panel("Stock level"):
 
 
 # net buying by stocks
-@reactive.calc
-def top_5():
-    """Obtain Net position by month & year across all funds.
-    Return a table with the top 5 or 10 by (positive) net position.
-    """
-    return (
-        df[
-            (df["month"] == input.mnth())
-            & (df["TR_TYPE"] == "Buy")
-            & (df["year"] == int(input.yr()))
-        ]
-        .groupby("ISIN")["value_crores"]
-        .sum()
-        .sort_values(ascending=False)
-        .iloc[:5]
-        .reset_index()
-        .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
-            ["company_name", "ISIN", "value_crores"]
-        ]
-    )
+# @reactive.calc
+# def top_5():
+#     """Obtain Net position by month & year across all funds.
+#     Return a table with the top 5 or 10 by (positive) net position.
+#     """
+#     return (
+#         df[
+#             (df["month"] == input.mnth())
+#             & (df["TR_TYPE"] == "Buy")
+#             & (df["year"] == int(input.yr()))
+#         ]
+#         .groupby("ISIN")["value_crores"]
+#         .sum()
+#         .sort_values(ascending=False)
+#         .iloc[:5]
+#         .reset_index()
+#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+#             ["company_name", "ISIN", "value_crores"]
+#         ]
+#     )
+#
 
-
-@reactive.calc
-def top_5_sold():
-    """Returns the list of top 5 bought by value"""
-    return (
-        df[
-            (df["month"] == input.mnth())
-            & (df["TR_TYPE"] == "Sell")
-            & (df["year"] == int(input.yr()))
-        ]
-        .groupby("ISIN")["VALUE"]
-        .sum()
-        .sort_values(ascending=False)
-        .iloc[:5]
-        .reset_index()
-        .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
-            ["company_name", "ISIN"]
-        ]
-    )
+# @reactive.calc
+# def top_5_sold():
+#     """Returns the list of top 5 bought by value"""
+#     return (
+#         df[
+#             (df["month"] == input.mnth())
+#             & (df["TR_TYPE"] == "Sell")
+#             & (df["year"] == int(input.yr()))
+#         ]
+#         .groupby("ISIN")["VALUE"]
+#         .sum()
+#         .sort_values(ascending=False)
+#         .iloc[:5]
+#         .reset_index()
+#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+#             ["company_name", "ISIN"]
+#         ]
+#     )
+#
 
 
 @reactive.calc
