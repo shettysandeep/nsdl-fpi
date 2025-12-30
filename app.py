@@ -5,8 +5,7 @@ from pathlib import Path
 import plotly.express as px
 from shiny.ui import tags
 from datetime import datetime
-from faicons import icon_svg
-from pathlib import Path
+# from faicons import icon_svg
 
 import pandas as pd
 import numpy as np
@@ -37,7 +36,7 @@ print("~~~~\n")
 list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
 STCK_LIST: list[str] = list_isin[list_isin.instrument_type == "Equity"][
     "company_name"
-].to_list()
+].tolist()
 
 
 # ~~Transaction type - buy or sell only
@@ -60,9 +59,9 @@ def filter_by_date(df: pd.DataFrame, date_range: tuple):
 
 
 # -----IMAGES/ICONS-
-ICONS = {
-    "usd": icon_svg("dollar-sign"),
-}
+# ICONS = {
+#    "usd": icon_svg("dollar-sign"),
+# }
 
 inr = ui.tags.img(src="rupee.png", height="50px", width="50px")  # ununsed
 inr_bl = ui.tags.img(src="dark_inr1.png", height="30px", width="30px")  # buy
@@ -105,7 +104,6 @@ with ui.nav_panel("Aggregate FPI activity"):
                 height="120px",
                 showcase_layout="left center",
             ):
-
                 tags.h1("Sold (Rs. Crores)", style="font-size: 90%;")
 
                 @render.ui
@@ -176,7 +174,7 @@ with ui.nav_panel("Aggregate FPI activity"):
 
         @render_plotly
         def mnthly_overall_within():
-            df_wide = mnthly_net()  # table from below.
+            df_wide: pd.DataFrame = mnthly_net()  # table from below.
             df_use = df_wide[
                 (df_wide["month"] == input.mnth())
                 & (df_wide["year"] == int(input.yr()))
@@ -203,7 +201,7 @@ with ui.nav_panel("Aggregate FPI activity"):
             # 3) FPI activity overall
 
         with ui.card():
-            ui.card_header("FPI activity in equity markets...")
+            ui.card_header("FPI activity across months")
 
             @render_plotly
             def overall_chart():
@@ -231,12 +229,44 @@ with ui.nav_panel("Aggregate FPI activity"):
                     y="VALUE",
                     color="TR_TYPE",
                     barmode="group",
-                    title="FPI activity across months in Secondary markets",
+                    title="",
                     labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
                 )
                 return lineplot
 
+        with ui.card():
+            ui.card_header("FPI monthly net purchases")
 
+            @render_plotly
+            def monthly_agg_chart():
+                """Net purchase monthly"""
+
+                dt = df.copy()  # for_that_mnth()
+                use_dt = (
+                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
+                    .groupby(["month", "year", "TR_TYPE"], observed=True)
+                    .sum("VALUE")
+                    .reset_index()
+                    .sort_values(by=["month", "year"], ascending=True)
+                )
+                # print(dt.dtypes)
+                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                #                                      string_to_date(str(x)))
+                use_dt["m_y"] = pd.to_datetime(
+                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+                ).astype(str)
+                # print(use_dt.head())
+                # print(use_dt.dtypes)
+                lineplot = px.bar(
+                    data_frame=use_dt,
+                    x="m_y",
+                    y="VALUE",
+                    color="TR_TYPE",
+                    barmode="group",
+                    title="",
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                return lineplot
 # ----------Page 2 - Stock level
 
 with ui.nav_panel("Stock level"):
@@ -367,7 +397,7 @@ def sold():
 
 
 @reactive.calc
-def mnthly_net():
+def mnthly_net() -> pd.DataFrame:
     """Returns dataframe with net positions at monthly level"""
     df_wide = (
         df.pivot_table(
