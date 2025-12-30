@@ -3,10 +3,9 @@ from shiny.express import input, ui, render
 from shinywidgets import render_plotly
 from pathlib import Path
 import plotly.express as px
-
+from shiny.ui import tags
 from datetime import datetime
-from faicons import icon_svg
-from pathlib import Path
+# from faicons import icon_svg
 
 import pandas as pd
 import numpy as np
@@ -15,13 +14,13 @@ import pyarrow.parquet as pq
 
 CRORE = 10000000
 MNTHS = [m.lower() for m in calendar.month_abbr]
-#mnth_u = [m for m in calendar.Month]
-#print(mnth_u)
+# mnth_u = [m for m in calendar.Month]
+# print(mnth_u)
 
 www_dir = Path(__file__).parent / "www"
 
-COL_NAMES =["Company","Net Purchase"]
-#print(www_dir)
+COL_NAMES = ["Company", "Net Purchase"]
+# print(www_dir)
 
 pth = Path("fpi_data/")
 datfile = "fpi_2024_2025.parquet"
@@ -35,9 +34,9 @@ print("~~~~\n")
 
 # ISIN list
 list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
-STCK_LIST: list[Any] = list_isin[list_isin.instrument_type == "Equity"][
+STCK_LIST: list[str] = list_isin[list_isin.instrument_type == "Equity"][
     "company_name"
-].to_list()
+].tolist()
 
 
 # ~~Transaction type - buy or sell only
@@ -45,7 +44,8 @@ df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
 # df["TR_DATE"] = pd.to_datetime(df["TR_DATE"])
-df = df[(df["instrument_type"]=="Equity")]
+df = df[(df["instrument_type"] == "Equity")]
+
 
 # ------helper
 def string_to_date(date_str):
@@ -59,16 +59,16 @@ def filter_by_date(df: pd.DataFrame, date_range: tuple):
 
 
 # -----IMAGES/ICONS-
-ICONS = {
-    "usd": icon_svg("dollar-sign"),
-}
+# ICONS = {
+#    "usd": icon_svg("dollar-sign"),
+# }
 
-inr=ui.tags.img(src="rupee.png", height="50px", width="50px") # ununsed
-inr_bl=ui.tags.img(src="dark_inr1.png", height="50px", width="50px") # buy
-inr_wh=ui.tags.img(src="white_inr1.png", height="50px", width="50px") # sale
-inr_io=ui.tags.img(src="inf_outf.png", height="50px", width="50px") # net
+inr = ui.tags.img(src="rupee.png", height="50px", width="50px")  # ununsed
+inr_bl = ui.tags.img(src="dark_inr1.png", height="30px", width="30px")  # buy
+inr_wh = ui.tags.img(src="white_inr1.png", height="30px", width="30px")  # sale
+inr_io = ui.tags.img(src="inf_outf.png", height="30px", width="30px")  # net
 
-#   
+#
 # ------------------------
 # Main Page
 # -------------------------
@@ -77,39 +77,95 @@ ui.page_opts(title="FPI Monitor - Equity Secondary Markets")  # fillable=True)
 # Page 1 - Overall fpi activity ~~~~~~~~~~~~~~~~~~~~~~~~
 
 with ui.nav_panel("Aggregate FPI activity"):
-    # with ui.layout_columns():#ui.sidebar(open="desktop"):
-    ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
-    ui.input_selectize("yr", "Select Year", ["2025", "2024"])
-    #ui.input_slider(
-    #    "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
-    #)
+    with ui.layout_columns():  # ui.sidebar(open="desktop"):
+        with ui.card():
+            ui.input_selectize("mnth", "Select Month", MNTHS, selected="jan")
+            ui.input_selectize("yr", "Select Year", ["2025", "2024"])
+            # ui.input_slider(
+            #    "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
+            # )
 
-    # with ui.layout_column_wrap():
-    with ui.layout_columns(fill=False):
-        with ui.value_box(showcase=inr_bl): #ICONS["usd"]):
-            "Equity Purchased (Rs. Crores)"
+        # with ui.layout_column_wrap():
+        # with ui.layout_columns(fill=False):
+        with ui.card():
+            with ui.value_box(
+                showcase=inr_bl,
+                height="120px",
+                showcase_layout="left center",
+            ):
+                tags.h1("Purchased (Rs. Crores)", style="font-size: 90%;")
 
-            @render.ui
-            def bght1():
-                return f"{bght():,.0f}"
+                @render.ui
+                def bght1():
+                    return tags.h1(f"{bght():,.0f}", style="font-size:80%;")
 
-        with ui.value_box(
-            showcase=inr_wh, #ICONS["usd"],
-        ):
-            "Equity Sold (Rs. Crores)"
+            with ui.value_box(
+                showcase=inr_wh,  # ICONS["usd"],
+                height="120px",
+                showcase_layout="left center",
+            ):
+                tags.h1("Sold (Rs. Crores)", style="font-size: 90%;")
 
-            @render.ui
-            def sold1():
-                return f"{sold():,.0f}"
+                @render.ui
+                def sold1():
+                    return tags.h1(f"{sold():,.0f}", style="font-size:80%;")
 
-        with ui.value_box(showcase=inr_io): #icon_svg("house")):
-            "Net Purchase (Rs. Crores)"
+            with ui.value_box(
+                showcase=inr_io,
+                height="120px",
+                width="80px",
+                showcase_layout="left center",
+            ):  # icon_svg("house")):
+                tags.h1("Net (Rs. Crores)", style="font-size:90%;")
 
-            @render.ui
-            def change():
-                net_diff = bght() - sold()
-                sign = "+" if net_diff > 0 else ""
-                return f"{sign}{net_diff:,.0f}"
+                @render.ui
+                def change():
+                    net_diff = bght() - sold()
+                    sign = "+" if net_diff > 0 else ""
+                    # ui.tags.style( style="color: red;")
+                    text2 = f"{sign}{net_diff:,.0f}"
+                    return tags.h1(text2, style="font-size:80%;")
+
+        # with ui.layout_columns(col_widths=[3, 3, 6]):
+        # 1) bought top 5 by net purchases.
+        with ui.card(full_screen=True):
+            ui.card_header("Top 5: Net Purchase > 0 (Rs. crores) ")
+
+            @render.data_frame
+            def table():
+                f_df = net_stock()
+                d1 = (
+                    f_df[
+                        (f_df["month"] == input.mnth())
+                        & (f_df["year"] == int(input.yr()))
+                    ]
+                    .sort_values("net_crores", ascending=False)[
+                        ["company_name", "net_crores"]
+                    ]
+                    .iloc[:5]
+                )
+                d1["net_crores"] = d1["net_crores"].round(1).astype(str)
+                d1.columns = COL_NAMES
+                return render.DataGrid(d1)
+
+        # 2) sold top 5
+        with ui.card(full_screen=True):
+            ui.card_header("Top 5: Net Purchase <0 (Rs. crores)")
+
+            @render.data_frame
+            def table1():
+                f_df = net_stock()
+                d1 = (
+                    f_df[
+                        (f_df["month"] == input.mnth())
+                        & (f_df["year"] == int(input.yr()))
+                    ]
+                    .sort_values("net_crores")[["company_name", "net_crores"]]
+                    .iloc[:5]
+                )
+                d1["net_crores"] = d1["net_crores"].round(1).astype(str)
+                d1.columns = COL_NAMES
+                return render.DataGrid(d1)
 
     # Top 10 by net position in a given month.
 
@@ -118,13 +174,13 @@ with ui.nav_panel("Aggregate FPI activity"):
 
         @render_plotly
         def mnthly_overall_within():
-            df_wide = mnthly_net()  # table from below.
+            df_wide: pd.DataFrame = mnthly_net()  # table from below.
             df_use = df_wide[
                 (df_wide["month"] == input.mnth())
                 & (df_wide["year"] == int(input.yr()))
             ]
-            #print("inside monthly within line 113 \n")
-            #print(df_use.month.value_counts())
+            # print("inside monthly within line 113 \n")
+            # print(df_use.month.value_counts())
             lineplot = px.bar(
                 data_frame=df_use,
                 x="TR_DATE",
@@ -133,7 +189,7 @@ with ui.nav_panel("Aggregate FPI activity"):
                 color_discrete_map={"Positive": "green", "Negative": "red"},
                 facet_col="year",
                 # barmode="group",
-                title= "", #f"Net Purchases in {input.mnth()}",
+                title="",  # f"Net Purchases in {input.mnth()}",
                 labels={
                     "Color_Group": "",
                     "net_crores": "Net purchase (Rs. crore)",
@@ -142,44 +198,10 @@ with ui.nav_panel("Aggregate FPI activity"):
             )
             return lineplot
 
-    with ui.layout_columns(col_widths=[3, 3, 6]):
-        # 1) bought top 5 by net purchases.
-        with ui.card(full_screen=True):
-            ui.card_header("Top 5 Stocks Net Purchase (Rs. crores) ")
+            # 3) FPI activity overall
 
-            @render.data_frame
-            def table():
-                f_df = net_stock()
-                d1 = (
-                    f_df[(f_df["month"] == input.mnth()) & (f_df["year"] ==
-                                                            int(input.yr()))]
-                    .sort_values("net_crores", ascending=False)[["company_name", "net_crores"]]
-                    .iloc[:5]
-                )
-                d1["net_crores"]=d1["net_crores"].round(1).astype(str)
-                d1.columns = COL_NAMES
-                return render.DataGrid(d1)
-
-        # 2) sold top 5
-        with ui.card(full_screen=True):
-            ui.card_header("Top 5 Stocks Net Sold (Rs. crores)")
-
-            @render.data_frame
-            def table1():
-                f_df = net_stock()
-                d1 = (
-                    f_df[(f_df["month"] == input.mnth()) & (f_df["year"] ==
-                                                            int(input.yr()))]
-                    .sort_values("net_crores")[["company_name", "net_crores"]]
-                    .iloc[:5]
-                )
-                d1["net_crores"]=d1["net_crores"].round(1).astype(str)
-                d1.columns = COL_NAMES
-                return render.DataGrid(d1)
-
-        # 3) FPI activity overall
         with ui.card():
-            ui.card_header("FPI activity in equity markets...")
+            ui.card_header("FPI activity across months")
 
             @render_plotly
             def overall_chart():
@@ -207,12 +229,44 @@ with ui.nav_panel("Aggregate FPI activity"):
                     y="VALUE",
                     color="TR_TYPE",
                     barmode="group",
-                    title="FPI activity across months in Secondary markets",
+                    title="",
                     labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
                 )
                 return lineplot
 
+        with ui.card():
+            ui.card_header("FPI monthly net purchases")
 
+            @render_plotly
+            def monthly_agg_chart():
+                """Net purchase monthly"""
+
+                dt = df.copy()  # for_that_mnth()
+                use_dt = (
+                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
+                    .groupby(["month", "year", "TR_TYPE"], observed=True)
+                    .sum("VALUE")
+                    .reset_index()
+                    .sort_values(by=["month", "year"], ascending=True)
+                )
+                # print(dt.dtypes)
+                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+                #                                      string_to_date(str(x)))
+                use_dt["m_y"] = pd.to_datetime(
+                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+                ).astype(str)
+                # print(use_dt.head())
+                # print(use_dt.dtypes)
+                lineplot = px.bar(
+                    data_frame=use_dt,
+                    x="m_y",
+                    y="VALUE",
+                    color="TR_TYPE",
+                    barmode="group",
+                    title="",
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                return lineplot
 # ----------Page 2 - Stock level
 
 with ui.nav_panel("Stock level"):
@@ -319,7 +373,7 @@ def bght():
         ][["VALUE"]]
         .sum()
         .iloc[0]
-        / 1 #int(input.usd_inr())
+        / 1  # int(input.usd_inr())
         / CRORE
     )
     return last_value
@@ -336,14 +390,14 @@ def sold():
         ][["VALUE"]]
         .sum()
         .iloc[0]
-        / 1 #int(input.usd_inr())
+        / 1  # int(input.usd_inr())
         / CRORE
     )
     return last_value
 
 
 @reactive.calc
-def mnthly_net():
+def mnthly_net() -> pd.DataFrame:
     """Returns dataframe with net positions at monthly level"""
     df_wide = (
         df.pivot_table(
