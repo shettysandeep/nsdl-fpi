@@ -1,29 +1,30 @@
 """Analysis of the FPI data in support of the Shiny APP"""
 
 import pandas as pd
-#from fpi_delimiting_text import cols_keep
+
+# from fpi_delimiting_text import cols_keep
 import matplotlib.pyplot as plt
 import plotly.express as px
 import pyarrow.parquet as pq
 
 
-fpi = pq.read_table("fpi_data/fpi_2024_2025.parquet") #,
+fpi = pq.read_table("fpi_data/fpi_2024_2025.parquet")  # ,
 #                    coerce_int96_timestamp_unit='ms')
-print(fpi)
+# print(fpi)
 fpi_dat = fpi.to_pandas()
 fpi_dat = fpi_dat[
     (fpi_dat.TR_TYPE == 1) | (fpi_dat.TR_TYPE == 4)
 ]  # buy/sale transation
-#fpi_dat.loc[:, "ISIN"] = fpi_dat.ISIN.str.strip()
-#fpi_dat.loc["mf"] = fpi_dat.ISIN.apply(lambda x: 1 if x[:3] == "INF" else 0)
+# fpi_dat.loc[:, "ISIN"] = fpi_dat.ISIN.str.strip()
+# fpi_dat.loc["mf"] = fpi_dat.ISIN.apply(lambda x: 1 if x[:3] == "INF" else 0)
 # print(fpi_dat[250:26666660]['TR_DATE'])
 # fpi_dat["TR_DATE"]=fpi_dat.TR_DATE.where(fpi_dat["TR_DATE"]=='2025-01-01',
 #                                         '2025-01-01 00:00:00')
 fpi_dat.loc["TR_DATE"] = pd.to_datetime(fpi_dat["TR_DATE"], format="mixed")
 # fpi_dat.loc["month"] = fpi_dat.TR_DATE.dt.month
-print(fpi_dat.head())
-#print(fpi_dat.SCRIP_NAME.iloc[11])
-#print(fpi_dat.TR_DATE.value_counts())
+# print(fpi_dat.head())
+# print(fpi_dat.SCRIP_NAME.iloc[11])
+# print(fpi_dat.TR_DATE.value_counts())
 
 
 # plot a stock
@@ -46,9 +47,8 @@ def stock_chart(df, stock_name):
 
 
 # %%
-#st = stock_chart(df=fpi_dat, stock_name="ADANI TOTAL GAS LIMITED")
-#st.show()
-
+# st = stock_chart(df=fpi_dat, stock_name="ADANI TOTAL GAS LIMITED")
+# st.show()
 
 
 def top_5(func):
@@ -78,7 +78,7 @@ def min_max_price(df, action=1):
 
 
 # top 5 equities and not mutual funds
-fpi_dat_grp = fpi_dat[fpi_dat["mf"] == 0].groupby("ISIN")
+fpi_dat_grp = fpi_dat.groupby("ISIN")
 
 
 def wghtd_price(df):
@@ -87,28 +87,16 @@ def wghtd_price(df):
     return df
 
 
-# test = fpi_dat_grp.apply(wghtd_price, include_groups=False)
-
-fpi_dat_grp.apply(lambda x: (x["RATE"] * (x["QUANTITY"] / x["QUANTITY"].sum())).mean())
+test = fpi_dat_grp.apply(wghtd_price, include_groups=False)
+print(test)
+print(
+    fpi_dat_grp.apply(
+        lambda x: (x["RATE"] * (x["QUANTITY"] / x["QUANTITY"].sum())).mean()
+    )
+)
 
 ok1 = fpi_dat_grp["VALUE"].mean().sort_values(ascending=False).iloc[:5].reset_index()
 list_isin = pd.read_csv("fpi_data/active_CM_DEBT_list.csv")
 
 
-
-print(pd.merge(ok1, list_isin, left_on="ISIN", right_on="ISIN", how="left"))
-
-
-
-""" 
-There is a lot to do here. 
-some isin stocks when it was sold at different times by the FPI.
-the duration of sales. how fpis sell lots. 
-sometimes it could be within fpi locations, etc. 
-there is a lot to unpack.
-this will be fun.
-
-"""
-
-"""
-'''
+# print(pd.merge(ok1, list_isin, left_on="ISIN", right_on="ISIN", how="left"))

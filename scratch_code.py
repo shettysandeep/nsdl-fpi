@@ -128,23 +128,21 @@ some_plot = px.bar(
 print(df.columns)
 
 
-#
-def wghtd_price(df: pd.DataFrame):
-    # obtain weighted price of sale / purchase
-    df["WTD_PRICE"] = (df["RATE"] * (df["QUANTITY"] / df["QUANTITY"].sum())).sum()
-    return df
+# Procedural approach to calculate VWAP
+small_df = df[
+    ["company_name", "month", "year", "TR_TYPE", "ISIN", "RATE", "QUANTITY"]
+].copy()
 
+small_df["TOTAL_VOLUME"] = small_df.groupby(
+    ["company_name", "month", "year", "TR_TYPE"], observed="False"
+)["QUANTITY"].transform("sum")
 
-dat_grp = df.groupby(["company_name", "mownth", "year", "TR_TYPE"])
-df["weighted_price"] = df.groupby(
-    ["company_name", "mownth", "year", "TR_TYPE"]
-).transform(wghtd_price)
-#     ).mean()
+small_df["vol_wights"] = small_df["QUANTITY"] / small_df["TOTAL_VOLUME"]
 
-# fd = pd.DataFrame()
-# for grp, dat in dat_grp:
-#     dat["weighted_price"] = (
-#         dat["RATE"] * (dat["QUANTITY"] / dat["QUANTITY"].sum())
-#     ).mean()
-#     fd = pd.concat([fd, dat])
-# print(fd.head())
+small_df["int_wrate"] = small_df["RATE"] * small_df["vol_wights"]
+
+small_df["VWAP"] = small_df.groupby(
+    ["company_name", "month", "year", "TR_TYPE"], observed="False"
+)["int_wrate"].transform("sum")
+
+print(small_df.head())
