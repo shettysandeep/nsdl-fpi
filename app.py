@@ -251,7 +251,7 @@ with ui.nav_panel("Aggregate FPI activity"):
             dt = mnthly_net()
             f_df = (
                 dt.groupby(["month", "year"])
-                .sum("net_crores")
+                .sum(["net_crores"])
                 .sort_values(by="net_crores", ascending=True)
                 .reset_index()
             )
@@ -370,17 +370,19 @@ with ui.nav_panel("Stock level"):
 
             @render_plotly
             def wPrice_mnthly():
-                indf = weighted_price()
+                indf = weighted_price1()
                 print(indf.head())
                 indf_c = indf[indf["company_name"] == input.equity()]
                 indf_c["m_y"] = pd.to_datetime(
                     indf_c["month"] + indf_c["year"].astype(str), format="%b%Y"
-                ).astype(str)
+                )
+                indf_c = indf_c.sort_values(by="m_y")
+                indf_c["m_y"] = indf_c["m_y"].astype(str)
                 lineplot = px.line(
                     data_frame=indf_c,
                     x="m_y",
-                    y="Max_wPrice",
-                    # color="Color_Group",  # "TR_TYPE",
+                    y="VWAP",
+                    color="TR_TYPE",
                     # color_discrete_map={"Positive": "green", "Negative": "red"},
                     title="{}".format(input.equity()),
                     labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
@@ -510,21 +512,23 @@ def weighted_price():
 
 @reactive.calc
 def weighted_price1():
-    # sdf = df.head()
-    sdf = (
-        df.groupby(
-            ["company_name", "month", "year", "TR_TYPE"], as_index=True, observed=True
-        )
-        .agg(
-            # {"VALUE": "sum", "RATE": ["min", "max"]}
-            Max_wPrice=pd.NamedAgg(column="RATE", aggfunc="max"),
-            #    TOTAL_VALUE = pd.NamedAgg(column="VALUE", aggfunc="sum"),
-            Min_wPrice=pd.NamedAgg(column="RATE", aggfunc="min"),
-        )
-        .reset_index()
-        # .sort_values(by=("VALUE", "sum"), ascending=False)
-    )
-    return sdf
+    small_df = df[
+        ["company_name", "month", "year", "TR_TYPE", "ISIN", "RATE", "QUANTITY"]
+    ].copy()
+
+    small_df["TOTAL_VOLUME"] = small_df.groupby(
+        ["company_name", "month", "year", "TR_TYPE"], observed="False"
+    )["QUANTITY"].transform("sum")
+
+    small_df["vol_wights"] = small_df["QUANTITY"] / small_df["TOTAL_VOLUME"]
+
+    small_df["int_wrate"] = small_df["RATE"] * small_df["vol_wights"]
+
+    small_df["VWAP"] = small_df.groupby(
+        ["company_name", "month", "year", "TR_TYPE"], observed="False"
+    )["int_wrate"].transform("sum")
+
+    return small_df
 
 
 # SCRAP VALUE...# SCRAP VALUE...# SCRAP VALUE...
