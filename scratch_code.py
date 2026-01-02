@@ -1,10 +1,9 @@
-import pandas as pd
-import pyarrow.parquet as pq
 import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import pandas as pd
 import plotly.express as px
-
+import plotly.graph_objects as go
+import pyarrow.parquet as pq
+from plotly.subplots import make_subplots
 
 df_table = pq.read_table("fpi_data/fpi_2024_2025.parquet")
 df = df_table.to_pandas()
@@ -29,7 +28,7 @@ f_df = (
     .sort_values(by="net_crores", ascending=True)
     .reset_index()
 )
-
+print(df.head())
 
 # print("~~~~top 5~~~~~~\n\n")
 # print(
@@ -68,7 +67,7 @@ df_wide["mn_yr"] = pd.to_datetime(
 )
 
 
-print(df_wide)
+# print(df_wide)
 
 
 def chart_month_net_buy():
@@ -111,8 +110,8 @@ def chart_month_net_buy():
     return fig
 
 
-plot1 = chart_month_net_buy()
-plot1.show()
+# plot1 = chart_month_net_buy()
+# plot1.show()
 
 
 # third type with - using hover data for net crores.
@@ -122,7 +121,30 @@ some_plot = px.bar(
     x="mn_yr",
     y="VALUE",
     color="TR_TYPE",
-    hover_data=df_wide["net_crores"],
+    # hover_data=df_wide["net_crores"],
 )
 
 # some_plot.show()
+print(df.columns)
+
+
+#
+def wghtd_price(df: pd.DataFrame):
+    # obtain weighted price of sale / purchase
+    df["WTD_PRICE"] = (df["RATE"] * (df["QUANTITY"] / df["QUANTITY"].sum())).sum()
+    return df
+
+
+dat_grp = df.groupby(["company_name", "mownth", "year", "TR_TYPE"])
+df["weighted_price"] = df.groupby(
+    ["company_name", "mownth", "year", "TR_TYPE"]
+).transform(wghtd_price)
+#     ).mean()
+
+# fd = pd.DataFrame()
+# for grp, dat in dat_grp:
+#     dat["weighted_price"] = (
+#         dat["RATE"] * (dat["QUANTITY"] / dat["QUANTITY"].sum())
+#     ).mean()
+#     fd = pd.concat([fd, dat])
+# print(fd.head())

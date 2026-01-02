@@ -1,13 +1,10 @@
-from shiny import reactive  # , req
+from shiny import reactive
 from shiny.express import input, ui, render
 from shinywidgets import render_plotly
 from pathlib import Path
 import plotly.express as px
 from shiny.ui import tags
 from datetime import datetime
-
-# from faicons import icon_svg
-
 import pandas as pd
 import numpy as np
 import calendar
@@ -31,13 +28,13 @@ print("~~~~\n")
 
 
 # ISIN list
-list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
+# list_isin = pd.read_csv(pth / "active_CM_DEBT_list.csv")
 
-STCK_LIST: list[str] = list_isin[list_isin.instrument_type == "Equity"][
-    "company_name"
-].tolist()
-
-del list_isin  # remove this table
+# STCK_LIST: list[str] = list_isin[list_isin.instrument_type == "Equity"][
+#     "company_name"
+# ].tolist()
+#
+# del list_isin  # remove this table
 
 
 # ~~Transaction type - buy or sell only
@@ -47,6 +44,9 @@ df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
 
 # Keep Equity Only
 df = df[(df["instrument_type"] == "Equity")]
+
+# List of companies
+STCK_LIST: list[str] = df["company_name"].unique().tolist()
 
 
 # ------helper
@@ -58,6 +58,13 @@ def filter_by_date(df: pd.DataFrame, date_range: tuple):
     rng = sorted(date_range)
     dates = pd.to_datetime(df["Date"], format="%Y-%m-%d").dt.date
     return df[(dates >= rng[0]) & (dates <= rng[1])]
+
+
+# calculate weighted price
+def wghtd_price(df: pd.DataFrame):
+    # obtain weighted price of sale / purchase
+    df["WTD_PRICE"] = (df["RATE"] * (df["QUANTITY"] / df["QUANTITY"].sum())).sum()
+    return df
 
 
 # -----IMAGES/ICONS-
@@ -87,8 +94,6 @@ with ui.nav_panel("Aggregate FPI activity"):
             #    "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
             # )
 
-        # with ui.layout_column_wrap():
-        # with ui.layout_columns(fill=False):
         with ui.card():
             with ui.value_box(
                 showcase=inr_bl,
@@ -202,73 +207,73 @@ with ui.nav_panel("Aggregate FPI activity"):
 
             # 3) FPI activity overall
 
-        with ui.card():
-            ui.card_header("FPI activity across months")
+    with ui.card():
+        ui.card_header("FPI activity across months")
 
-            @render_plotly
-            def overall_chart():
-                """Overall chart across months"""
+        @render_plotly
+        def overall_chart():
+            """Overall chart across months"""
 
-                dt = df.copy()  # for_that_mnth()
-                use_dt = (
-                    dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
-                    .groupby(["month", "year", "TR_TYPE"], observed=True)
-                    .sum("VALUE")
-                    .reset_index()
-                    .sort_values(by=["month", "year"], ascending=True)
-                )
-                # print(dt.dtypes)
-                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                #                                      string_to_date(str(x)))
-                use_dt["m_y"] = pd.to_datetime(
-                    use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
-                ).astype(str)
-                # print(use_dt.head())
-                # print(use_dt.dtypes)
-                lineplot = px.bar(
-                    data_frame=use_dt,
-                    x="m_y",
-                    y="VALUE",
-                    color="TR_TYPE",
-                    barmode="group",
-                    title="",
-                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-                )
-                return lineplot
+            dt = df.copy()  # for_that_mnth()
+            use_dt = (
+                dt[["month", "year", "TR_TYPE", "VALUE", "TR_DATE"]]
+                .groupby(["month", "year", "TR_TYPE"], observed=True)
+                .sum("VALUE")
+                .reset_index()
+                .sort_values(by=["month", "year"], ascending=True)
+            )
+            # print(dt.dtypes)
+            # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
+            #                                      string_to_date(str(x)))
+            use_dt["m_y"] = pd.to_datetime(
+                use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
+            ).astype(str)
+            # print(use_dt.head())
+            # print(use_dt.dtypes)
+            lineplot = px.bar(
+                data_frame=use_dt,
+                x="m_y",
+                y="VALUE",
+                color="TR_TYPE",
+                barmode="group",
+                title="",
+                labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+            )
+            return lineplot
 
-        with ui.card():
-            ui.card_header("FPI monthly net purchases")
+    with ui.card():
+        ui.card_header("FPI monthly net purchases")
 
-            @render_plotly
-            def monthly_agg_chart():
-                """Net purchase monthly"""
+        @render_plotly
+        def monthly_agg_chart():
+            """Net purchase monthly"""
 
-                dt = mnthly_net()
-                f_df = (
-                    dt.groupby(["month", "year"])
-                    .sum("net_crores")
-                    .sort_values(by="net_crores", ascending=True)
-                    .reset_index()
-                )
-                f_df["m_y"] = pd.to_datetime(
-                    f_df["month"] + f_df["year"].astype(str), format="%b%Y"
-                ).astype(str)
-                f_df["Color_Group"] = f_df["net_crores"].apply(
-                    lambda x: "Positive" if x >= 0 else "Negative"
-                )
+            dt = mnthly_net()
+            f_df = (
+                dt.groupby(["month", "year"])
+                .sum("net_crores")
+                .sort_values(by="net_crores", ascending=True)
+                .reset_index()
+            )
+            f_df["m_y"] = pd.to_datetime(
+                f_df["month"] + f_df["year"].astype(str), format="%b%Y"
+            ).astype(str)
+            f_df["Color_Group"] = f_df["net_crores"].apply(
+                lambda x: "Positive" if x >= 0 else "Negative"
+            )
 
-                lineplot = px.bar(
-                    data_frame=f_df,
-                    x="m_y",
-                    y="net_crores",
-                    color="Color_Group",  # "TR_TYPE",
-                    color_discrete_map={"Positive": "green", "Negative": "red"},
-                    # color="TR_TYPE",
-                    # barmode="group",
-                    title="",
-                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
-                )
-                return lineplot
+            lineplot = px.bar(
+                data_frame=f_df,
+                x="m_y",
+                y="net_crores",
+                color="Color_Group",  # "TR_TYPE",
+                color_discrete_map={"Positive": "green", "Negative": "red"},
+                # color="TR_TYPE",
+                # barmode="group",
+                title="",
+                labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+            )
+            return lineplot
 
 
 # ----------Page 2 - Stock level
@@ -332,10 +337,8 @@ with ui.nav_panel("Stock level"):
                 Combine the name and ISIN in a tuple
                 """
                 dt = net_stock()
-                # dt = df.copy()  # for_that_mnth()
                 applied_dt = dt[dt["company_name"] == input.equity()]
                 name_scrip = input.equity()
-                # print(name_scrip)
                 use_dt = (
                     applied_dt[["month", "year", "net_crores"]]
                     .groupby(["month", "year"], observed=True)
@@ -343,8 +346,6 @@ with ui.nav_panel("Stock level"):
                     .reset_index()
                     .sort_values(by=["month", "year"], ascending=True)
                 )
-                # use_dt["m_y"]=use_dt["TR_DATE"].apply(lambda x:
-                #                                      string_to_date(str(x)))
                 use_dt["m_y"] = pd.to_datetime(
                     use_dt["month"] + use_dt["year"].astype(str), format="%b%Y"
                 ).astype("datetime64[us]")
@@ -359,59 +360,38 @@ with ui.nav_panel("Stock level"):
                     y="net_crores",
                     color="Color_Group",  # "TR_TYPE",
                     color_discrete_map={"Positive": "green", "Negative": "red"},
-                    title="{} - monthly FPI net purchases".format(input.equity()),
+                    title=name_scrip,
                     labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
                 )
+                return lineplot
+
+        with ui.card():
+            ui.card_header("Weighted average buy and sale price")
+
+            @render_plotly
+            def wPrice_mnthly():
+                indf = weighted_price()
+                print(indf.head())
+                indf_c = indf[indf["company_name"] == input.equity()]
+                indf_c["m_y"] = pd.to_datetime(
+                    indf_c["month"] + indf_c["year"].astype(str), format="%b%Y"
+                ).astype(str)
+                lineplot = px.line(
+                    data_frame=indf_c,
+                    x="m_y",
+                    y="Max_wPrice",
+                    # color="Color_Group",  # "TR_TYPE",
+                    # color_discrete_map={"Positive": "green", "Negative": "red"},
+                    title="{}".format(input.equity()),
+                    labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
+                )
+                print(indf.head())
                 return lineplot
 
 
 # --------------------------------------------------------
 # Reactive calculations and effects
 # --------------------------------------------------------
-
-
-# net buying by stocks
-# @reactive.calc
-# def top_5():
-#     """Obtain Net position by month & year across all funds.
-#     Return a table with the top 5 or 10 by (positive) net position.
-#     """
-#     return (
-#         df[
-#             (df["month"] == input.mnth())
-#             & (df["TR_TYPE"] == "Buy")
-#             & (df["year"] == int(input.yr()))
-#         ]
-#         .groupby("ISIN")["value_crores"]
-#         .sum()
-#         .sort_values(ascending=False)
-#         .iloc[:5]
-#         .reset_index()
-#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
-#             ["company_name", "ISIN", "value_crores"]
-#         ]
-#     )
-#
-
-# @reactive.calc
-# def top_5_sold():
-#     """Returns the list of top 5 bought by value"""
-#     return (
-#         df[
-#             (df["month"] == input.mnth())
-#             & (df["TR_TYPE"] == "Sell")
-#             & (df["year"] == int(input.yr()))
-#         ]
-#         .groupby("ISIN")["VALUE"]
-#         .sum()
-#         .sort_values(ascending=False)
-#         .iloc[:5]
-#         .reset_index()
-#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
-#             ["company_name", "ISIN"]
-#         ]
-#     )
-#
 
 
 @reactive.calc
@@ -498,3 +478,95 @@ def net_stock():
         .reset_index()
     )
     return f_df
+
+
+# Need to think of a postion for this.
+# This provides info on monthly weighted buy and sale orices of FPI.
+# ~~~~~~~~~~~~~~~~~~~~~
+
+
+@reactive.calc
+def weighted_price():
+    dat_grp = df.groupby(["company_name", "month", "year", "TR_TYPE"])
+    dat_grp["weighted_price"] = dat_grp.apply(
+        lambda x: (x["RATE"] * (x["QUANTITY"] / x["QUANTITY"].sum())).mean()
+    )
+    print(df.head())
+    sdf = (
+        df.groupby(
+            ["company_name", "month", "year", "TR_TYPE"], as_index=True, observed=True
+        )
+        .agg(
+            # {"VALUE": "sum", "RATE": ["min", "max"]}
+            Max_wPrice=pd.NamedAgg(column="RATE", aggfunc="max"),
+            #    TOTAL_VALUE = pd.NamedAgg(column="VALUE", aggfunc="sum"),
+            Min_wPrice=pd.NamedAgg(column="RATE", aggfunc="min"),
+        )
+        .reset_index()
+        # .sort_values(by=("VALUE", "sum"), ascending=False)
+    )
+    return sdf
+
+
+@reactive.calc
+def weighted_price1():
+    # sdf = df.head()
+    sdf = (
+        df.groupby(
+            ["company_name", "month", "year", "TR_TYPE"], as_index=True, observed=True
+        )
+        .agg(
+            # {"VALUE": "sum", "RATE": ["min", "max"]}
+            Max_wPrice=pd.NamedAgg(column="RATE", aggfunc="max"),
+            #    TOTAL_VALUE = pd.NamedAgg(column="VALUE", aggfunc="sum"),
+            Min_wPrice=pd.NamedAgg(column="RATE", aggfunc="min"),
+        )
+        .reset_index()
+        # .sort_values(by=("VALUE", "sum"), ascending=False)
+    )
+    return sdf
+
+
+# SCRAP VALUE...# SCRAP VALUE...# SCRAP VALUE...
+# net buying by stocks
+# @reactive.calc
+# def top_5():
+#     """Obtain Net position by month & year across all funds.
+#     Return a table with the top 5 or 10 by (positive) net position.
+#     """
+#     return (
+#         df[
+#             (df["month"] == input.mnth())
+#             & (df["TR_TYPE"] == "Buy")
+#             & (df["year"] == int(input.yr()))
+#         ]
+#         .groupby("ISIN")["value_crores"]
+#         .sum()
+#         .sort_values(ascending=False)
+#         .iloc[:5]
+#         .reset_index()
+#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+#             ["company_name", "ISIN", "value_crores"]
+#         ]
+#     )
+#
+
+# @reactive.calc
+# def top_5_sold():
+#     """Returns the list of top 5 bought by value"""
+#     return (
+#         df[
+#             (df["month"] == input.mnth())
+#             & (df["TR_TYPE"] == "Sell")
+#             & (df["year"] == int(input.yr()))
+#         ]
+#         .groupby("ISIN")["VALUE"]
+#         .sum()
+#         .sort_values(ascending=False)
+#         .iloc[:5]
+#         .reset_index()
+#         .merge(list_isin, left_on="ISIN", right_on="ISIN", how="left")[
+#             ["company_name", "ISIN"]
+#         ]
+#     )
+#
