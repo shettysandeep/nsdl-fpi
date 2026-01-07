@@ -9,4 +9,4 @@ delimiting_text = {
     "status_fpi": ["Status", "Name"],
 }
 
-cols_keep = ["SCRIP_NAME", "ISIN", "TR_DATE", "TR_TYPE", "RATE", "QUANTITY", "VALUE"]
+cols_keep = ["SCRIP_NAME", "ISIN", "FII", "SUB_ACC", "TR_DATE", "TR_TYPE", "RATE", "QUANTITY", "VALUE"]
