@@ -22,10 +22,9 @@ class combine_data:
             ]
             return file_list
         else:
-            [self.pathfile]
+            return [self.pathfile]
 
-    def clean_combine(self):
-
+    def clean_combine(self) -> pd.DataFrame:
         aug_df = pd.DataFrame()
         for itms in self.file_list:
             df = pd.read_excel(itms, engine="openpyxl")
@@ -44,20 +43,12 @@ class combine_data:
             aug_df = pd.concat([aug_df, df])
         return aug_df
 
-    @staticmethod
-    def combine_csv(files: list):
-        if isinstance(files, list):
-            df_c = pd.DataFrame()
-            for fl in files:
-                df = pd.read_csv(fl)
-                df_c = pd.concat([df_c, df])
-            df_c.to_csv("fpi_combined_years.csv")
 
 if __name__ == "__main__":
-
-    testpath = Path() / "nsdl_data" / "2025"
-    file_2025 = combine_data(testpath)
-    combined_2025 = file_2025.clean_combine()
-
-    combined_2025.to_csv(Path("..") / "fpi_2025.csv")
-    # year_2024.to_parquet(Path("..") / "fpi_2024.parquet")
+    for ys in ["2024", "2025"]:
+        testpath = Path() / "nsdl_data" / ys
+        print(testpath)
+        file_1 = combine_data(testpath)
+        combined = file_1.clean_combine()
+        fname = f"fpi_w_fii_{ys}."
+        combined.to_parquet(Path("fpi_data") / fname)
