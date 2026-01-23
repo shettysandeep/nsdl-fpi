@@ -45,10 +45,14 @@ class combine_data:
 
 
 if __name__ == "__main__":
+    dat_df = pd.DataFrame()
     for ys in ["2024", "2025"]:
         testpath = Path() / "nsdl_data" / ys
         print(testpath)
         file_1 = combine_data(testpath)
         combined = file_1.clean_combine()
-        fname = f"fpi_w_fii_{ys}."
+        fname = f"fpi_w_fii_{ys}.parquet"
         combined.to_parquet(Path("fpi_data") / fname)
+        dat_df = pd.concat([dat_df, combined])
+        dat_df.to_parquet(Path("fpi_data")/"fpi_id_2024_2025.parquet")
+
