@@ -15,21 +15,21 @@ MNTHS = [m.lower() for m in calendar.month_abbr]
 FMTHS = [m for m in calendar.month_name]
 mth = dict(zip(FMTHS, MNTHS))
 
-
 www_dir = Path(__file__).parent / "www"
 # Use the Path object to construct the correct path to your CSS file
 css_file_path = Path(__file__).parent / "www" / "styles.css"
 
 # Include the local CSS file in the UI
-#ui.include_css(css_file_path)
+# ui.include_css(css_file_path)
 
 COL_NAMES = ["Company", "Net Purchase"]
 
 pth = Path("fpi_data/")
-datfile = "fpi_2024_2025.parquet"
+# datfile = "fpi_2024_2025.parquet"
+datfile = "fpi_id_2024_2025_mgd_jan2026.parquet"
 
 # source data for FPI flows - 2024-25
-df = pq.read_table("fpi_data/fpi_2024_2025.parquet")
+df = pq.read_table(Path(pth / datfile))
 df = df.to_pandas()
 
 print("~~~~\n")
@@ -39,9 +39,12 @@ print("~~~~\n")
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
 df["TR_TYPE"] = df["TR_TYPE"].astype("category")
 df["TR_TYPE"] = df.TR_TYPE.cat.rename_categories({1: "Buy", 4: "Sell"})
+df["month"] = df.month.str.strip()
+df["year"] = df.year.astype(int)
 
 # ---- Keep Equity Only
 df = df[(df["instrument_type"] == "Equity")]
+
 
 # ---List of companies
 STCK_LIST: list[str] = df["company_name"].sort_values().unique().tolist()
@@ -68,11 +71,12 @@ inr_io = ui.tags.img(src="inf_outf.png", height="30px", width="30px")  # net
 # ------------------------
 # Main Page
 # -------------------------
-ui.page_opts(title=tags.h1("FPI Monitor: Secondary Equity Markets"),
-            theme=ui.Theme("lux"),
-            #base_font="Roboto",        # For all general text
-            #heading_font="Yusei Magic"
-            )  # fillable=True
+ui.page_opts(
+    title=tags.h1("FPI Monitor: Secondary Equity Markets"),
+    theme=ui.Theme("lux"),
+    # base_font="Roboto",        # For all general text
+    # heading_font="Yusei Magic"
+)  # fillable=True
 
 # Page 1 - Overall fpi activity ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -86,10 +90,13 @@ with ui.nav_panel("Aggregate FPI activity"):
             #    "usd_inr", "$/INR", min=88.0, max=90.0, value=88.2, step=0.2, pre="$", sep=","
             # )
         with ui.card():
+
             @render.ui
             def card1():
-                return ui.card_header("In {} {}, FPIs... ".format(input.mnth(), input.yr()))
-        
+                return ui.card_header(
+                    "In {} {}, FPIs... ".format(input.mnth(), input.yr())
+                )
+
             with ui.value_box(
                 showcase=inr_bl,
                 height="120px",
@@ -131,13 +138,14 @@ with ui.nav_panel("Aggregate FPI activity"):
         # with ui.layout_columns(col_widths=[3, 3, 6]):
         # 1) bought top 5 by net purchases.
         with ui.card(full_screen=True):
+
             @render.ui
             def card2():
                 return ui.card_header(
-                "Top 5 stocks net bought in {}-{}: (Rs. crores)".format(
-                    input.mnth(), input.yr()
+                    "Top 5 stocks net bought in {}-{}: (Rs. crores)".format(
+                        input.mnth(), input.yr()
+                    )
                 )
-            )
 
             @render.data_frame
             def table():
@@ -154,24 +162,25 @@ with ui.nav_panel("Aggregate FPI activity"):
                 )
                 d1["net_crores"] = d1["net_crores"].round(1).astype(str)
                 d1.columns = COL_NAMES
-                #print(d1)
+                # print(d1)
                 return render.DataGrid(d1)
 
         # 2) sold top 5
         with ui.card(full_screen=True):
+
             @render.ui
             def cardr3():
                 return ui.card_header(
-                "Top 5 stocks net sold in {}-{}: (Rs. crores)".format(
-                    input.mnth(), input.yr()
+                    "Top 5 stocks net sold in {}-{}: (Rs. crores)".format(
+                        input.mnth(), input.yr()
+                    )
                 )
-            )
 
             @render.data_frame
             def table1():
                 f_df = net_stock()
                 d1 = (
-                    f_df[
+                    f_df.loc[
                         (f_df["month"] == mth[input.mnth()])
                         & (f_df["year"] == int(input.yr()))
                     ]
@@ -185,11 +194,12 @@ with ui.nav_panel("Aggregate FPI activity"):
     # Top 10 by net position in a given month.
 
     with ui.card():
+
         @render.ui
         def gr_hdr():
             return ui.card_header(
-                "Net purchases (Daily) in {} {}".format(input.mnth(),
-                                   input.yr()))
+                "Net purchases (Daily) in {} {}".format(input.mnth(), input.yr())
+            )
 
         @render_plotly
         def mnthly_overall_within():
@@ -204,7 +214,7 @@ with ui.nav_panel("Aggregate FPI activity"):
                 y="net_crores",
                 color="Color_Group",  # "TR_TYPE",
                 color_discrete_map={"Positive": "green", "Negative": "red"},
-                #facet_col="year",
+                # facet_col="year",
                 # barmode="group",
                 title="",  # f"Net Purchases in {mth[input.mnth()]}",
                 labels={
@@ -214,7 +224,8 @@ with ui.nav_panel("Aggregate FPI activity"):
                 },
             )
             return lineplot
-#---- Monthly Net
+
+    # ---- Monthly Net
     with ui.card():
         ui.card_header("FPI monthly net purchases")
 
@@ -245,13 +256,16 @@ with ui.nav_panel("Aggregate FPI activity"):
                 # color="TR_TYPE",
                 # barmode="group",
                 title="",
-                labels={"TR_TYPE": "", 
-                        "m_y": "", 
-                        "net_crores": "Net purchase (Rs. crore)",
-                        "Color_Group":""},
+                labels={
+                    "TR_TYPE": "",
+                    "m_y": "",
+                    "net_crores": "Net purchase (Rs. crore)",
+                    "Color_Group": "",
+                },
             )
             return lineplot
-#---- Monthly Buy and Sale
+
+    # ---- Monthly Buy and Sale
     with ui.card():
         ui.card_header("FPI activity across all months")
 
@@ -285,7 +299,6 @@ with ui.nav_panel("Aggregate FPI activity"):
                 labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
             )
             return lineplot
-
 
 
 # ----------Page 2 - Stock level
@@ -374,10 +387,12 @@ with ui.nav_panel("Stock level"):
                 color="Color_Group",  # "TR_TYPE",
                 color_discrete_map={"Positive": "green", "Negative": "red"},
                 title=name_scrip,
-                labels={"TR_TYPE": "", "m_y": "", 
-                         "net_crores": "Net purchase (Rs. crore)",
-                        #"VALUE": "INR"
-                       },
+                labels={
+                    "TR_TYPE": "",
+                    "m_y": "",
+                    "net_crores": "Net purchase (Rs. crore)",
+                    # "VALUE": "INR"
+                },
             )
             return lineplot
 
@@ -387,8 +402,8 @@ with ui.nav_panel("Stock level"):
         @render_plotly
         def wPrice_mnthly():
             indf = weighted_price1()
-            #print(indf.head())
-            indf_c = indf[indf["company_name"] == input.equity()]
+            # print(indf.head())
+            indf_c = indf[(indf["company_name"] == input.equity())].copy()
             indf_c["m_y"] = pd.to_datetime(
                 indf_c["month"] + indf_c["year"].astype(str), format="%b%Y"
             )
@@ -403,8 +418,55 @@ with ui.nav_panel("Stock level"):
                 title="{}".format(input.equity()),
                 labels={"TR_TYPE": "", "m_y": "", "VALUE": "INR"},
             )
-            #print(indf.head())
+            # print(indf.head())
             return lineplot
+
+    with ui.layout_columns():
+        with ui.card():
+            ui.card_header("Number of FIIs bought in the stock")
+
+            @render_plotly
+            def fii_in_stock_buy():
+                dt = fii_count_stock()
+                name_scrip = input.equity()
+                lineplot = px.bar(
+                    data_frame=dt,
+                    x="m_y",
+                    y="Buy",
+                    # color="Color_Group",  # "TR_TYPE",
+                    # color_discrete_map={"Positive": "green", "Negative": "red"},
+                    title=name_scrip,
+                    labels={
+                        "TR_TYPE": "",
+                        "m_y": "",
+                        "1": "Count of FPIs buying",
+                        # "VALUE": "INR"
+                    },
+                )
+                return lineplot
+
+        with ui.card():
+            ui.card_header("Number of FIIs sold the stock")
+
+            @render_plotly
+            def fii_in_stock_sell():
+                dt = fii_count_stock()
+                name_scrip = input.equity()
+                lineplot = px.bar(
+                    data_frame=dt,
+                    x="m_y",
+                    y="Sell",
+                    # color="Color_Group",  # "TR_TYPE",
+                    # color_discrete_map={"Positive": "green", "Negative": "red"},
+                    title=name_scrip,
+                    labels={
+                        "TR_TYPE": "",
+                        "m_y": "",
+                        "1": "Count of FPIs buying",
+                        # "VALUE": "INR"
+                    },
+                )
+                return lineplot
 
 
 # --------------------------------------------------------
@@ -516,7 +578,7 @@ def weighted_price():
     dat_grp["weighted_price"] = dat_grp.apply(
         lambda x: (x["RATE"] * (x["QUANTITY"] / x["QUANTITY"].sum())).mean()
     )
-    #print(df.head())
+    # print(df.head())
     sdf = (
         df.groupby(
             ["company_name", "month", "year", "TR_TYPE"], as_index=True, observed=True
@@ -552,6 +614,29 @@ def weighted_price1():
     )["int_wrate"].transform("sum")
 
     return small_df
+
+
+@reactive.calc
+def fii_count_stock():
+    dt_isin = df[df["company_name"] == input.equity()]
+    dt_isin = dt_isin.drop_duplicates(["month", "year", "FII"])
+    dt_isin = (
+        (
+            dt_isin.groupby(["month", "year", "TR_TYPE"], observed=False)["FII"]
+            .count()
+            .reset_index()
+        )
+        .pivot_table(
+            columns="TR_TYPE", index=["month", "year"], values="FII", observed=False
+        )
+        .reset_index()
+        .sort_values(by=["year", "month"])
+    )
+    dt_isin["m_y"] = pd.to_datetime(
+        dt_isin["month"] + dt_isin["year"].astype(str), format="%b%Y"
+    ).astype(str)
+    dt_isin.rename(columns={1: "Buy", 4: "Sell"}, inplace=True)
+    return dt_isin
 
 
 # SCRAP VALUE...# SCRAP VALUE...# SCRAP VALUE...
