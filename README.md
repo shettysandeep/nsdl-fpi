@@ -1,31 +1,24 @@
 # FPIs in India
 
-Foreign Portfolio Investors (FPIs) are large foreign institutional investors
-like foreign pension funds, etc. and large qualified foreign investors who
-invest large sums of money in the Indian capital markets. As of September 2025,
-there were 12990 registered FPIs, of which 30% were from the US.
+2025 saw major selling by the FPIs[^1] in Indian capital markets. They (net) sold
+to the tune of 1.6 lac crores. The selling which started in Jan
+continued unabated, peaking in September ignoring the GST break, but not falling much. Despite the aggressive selling the markets
+remained steady. DIIs and others stepped up the buying with faith in the
+indian growth story. This got me looking into the FPI
+data.
 
-FPIs add significant liquidity and depth to the Indian capital markets. About
-17% of the total turnover on NSE in 2025 were due to FPIs - buying and selling
-about 18,000 crore shares.
+NSDL has a rich dataset on the daily FPI transactions (going back
+to 2018s) but unfortunately released with an enormous delay (the latest is from
+March 2025). Still an interesting cache for exploration. I extracted, cleaned,
+and built an app in Python Shiny around this data for exploration. Students and others interested in
+this data can use this tool to explore. The app is here.
 
-In 2025, we saw FPIs withdrawing over 1.6 lakh crores from the markets - a
-catastrophic event if not for the buying by Domestic institutional Investors
-(DII) and others, which averted a large correction in the markets. Numerous
-factors underlie this level of selling - overvalued, slow down in
-earnings, geopolitical risks, tariffs and the stalled US-India trade deal, etc.
+Please note that specific FPIs cannot be identified as their IDs are masked and they change every month. So, if you are interested to see longitudinal patterns or hope to link the FPIs to their country of origin with FPI registration data you will be disappointed.
 
-NSDL has a large
-[dataset](https://www.fpi.nsdl.co.in/web/Reports/ReportsListing.aspx) on FPIs
-daily transactions data at the individual stock level. Despite some reporting
-issues observed in the data, and the long delay in updating this data (latest
-data is from March 2025) this is a largely robust and interesting dataset
-with the potential for some interesting insights.
-
-In this repo I extract and clean this dataset towards setting up a Python Shiny app
-to enable users to explore. I only look at secondary market transactions in
-equities.
+[^1]:
+    FPIs (Foreign Portfolio Investors) are large foreign institutional investors
+    like sovereign funds, etc. and large qualified foreign investors who
+    invest in the Indian capital markets. As of September 2025,
+    there were 12990 registered FPIs, of which 30% were from the US.
 
 The app is [here.]()
-
-I deploy containerizied app on Google cloud.
