@@ -92,7 +92,7 @@ Table 2: Top 5 net sold 2024-2025
 I extracted, cleaned, and built an app in Python Shiny around the
 2024-2025 data for exploration. Students and others interested in this
 data can use this
-[app.](fpi-dahi-dimag-linux-599110706922.europe-west1.run.app)
+[app](fpi-dahi-dimag-linux-599110706922.europe-west1.run.app)
 
 The app allows you to explore the data at the stock level, and also see
 the top 5 net bought/sold stocks by month. You can also see the net
