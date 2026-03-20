@@ -1,12 +1,11 @@
 # FPIs in India: 2024-2025
 
-
 2025 saw major selling by the FPIs (Foreign Portfolio Investors)[^1] in
 the Indian equity markets. They (net) sold about 1.2 lac crores.[^2]
 2024 was no different - there were more months of net selling than net
 buying. See <a href="#fig-mnthly-net" class="quarto-xref">Figure 1</a>
-below. Despite the aggressive selling the markets ended the year
-marginally higher as domestic buying stepped in.
+below. Despite the aggressive selling the markets ended the 2025
+(Jan-Dec) marginally higher as domestic buying stepped in.
 
 <div id="fig-mnthly-net">
 
@@ -16,9 +15,7 @@ Figure 1: Net Purchases 2024-2025
 
 </div>
 
-FPIs add considerable liquidity and depth to the Indian capital markets.
-In 2024, FPIs accounted for about 17% of the total turnover on NSE,
-buying and selling about 18,000 crore shares.[^3]
+### FPIs in India
 
 As of September 2025, there were about 12086 FPIs registered in India,
 30% of whom were from the US.
@@ -42,18 +39,22 @@ Table 1: FPIs country of origin
 
 </div>
 
-### NSDL data
+FPIs add considerable liquidity and depth to the Indian capital markets.
+In 2024, FPIs accounted for about 17% of the total turnover on NSE,
+buying and selling about 18,000 crore shares.[^3]
+
+### NSDL’s FPI data
 
 NSDL has a rich dataset on the daily FPI transactions, which goes back
 to 2003. But unfortunately this data is released with an enormous
 delay.[^4] The latest is from March 2025.
 
-There are some gaps in the data. For instance, the FPI IDs are masked,
-for pivacy reasons, and these IDs change every month so longitudinal
-views cannot be constructed. This also makes it impossible to link the
-FPIs to their country of origin (using FPI registration data) to see
-in-/out-flows by country. However, this is still an interesting dataset
-to explore.
+There are some challenges in the data. For instance, the FPI IDs are
+masked for pivacy reasons it impossible to link the FPIs to their
+country of origin (using FPI registration data) if you’d like to
+calculate in-/out-flows by country at the stock-level, etc. Furthermore,
+these IDs change every month so creating longitudinal views is out of
+the question. That said this is still an interesting dataset to explore.
 
 ### FPI transactions
 
@@ -90,18 +91,23 @@ Table 2: Top 5 net sold 2024-2025
 
 I extracted, cleaned, and built an app in Python Shiny around the
 2024-2025 data for exploration. Students and others interested in this
-data can use this [app.]()
+data can use this
+[app.](fpi-dahi-dimag-linux-599110706922.europe-west1.run.app)
 
+The app allows you to explore the data at the stock level, and also see
+the top 5 net bought/sold stocks by month. You can also see the net
+positions by month for a stock of your choice. The app is built using
+Python Shiny and Plotly for interactive visualizations.
 
-
-[^1]: FPIs are large foreign institutional investors such as sovereign
+[^1]:
+    FPIs are large foreign institutional investors such as sovereign
     funds and large qualified foreign investors who invest in the Indian
     capital markets.
 
 [^2]: https://www.fpi.nsdl.co.in/Reports/Yearwise.aspx?RptType=5
 
-[^3]: These are my calculations using NSE total turnover data and the
+[^3]:
+    These are my calculations using NSE total turnover data and the
     total shares from the NSDL data above
 
 [^4]: https://www.fpi.nsdl.co.in/web/StaticReports/FIITradeWise2008/FIITradeWise2008.htm
-
