@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import calendar
 import pyarrow.parquet as pq
+from datetime import date
 
 CRORE = 10000000
 MNTHS = [m.lower() for m in calendar.month_abbr]
@@ -32,8 +33,19 @@ datfile = "fpi_id_2024_2025_mgd_jan2026.parquet"
 df = pq.read_table(Path(pth / datfile))
 df = df.to_pandas()
 
+# auc data
+auc = pd.read_csv(pth / "combined_auc_equity_clean.csv", index_col=0)
+# auc["Sectors"] = auc.Sectors.str.strip()
+SCTRS = auc.Sectors.value_counts().index.to_list()
+# only EQUITY
+auc["Date"] = pd.to_datetime(auc.Date, format="%Y-%m-%d")
+
+# auc = auc[["Sectors", "Date", "Equity", "month", "year"]]
+# print(type(auc.Date))
+# print(auc.Date[:10])
 print("~~~~\n")
 
+CNTRY = ["H", "S"]
 
 # --- Transaction type - buy or sell only
 df = df[(df["TR_TYPE"] == 1) | (df["TR_TYPE"] == 4)]  #
@@ -469,6 +481,60 @@ with ui.nav_panel("Stock level"):
                 return lineplot
 
 
+# ----------- Page 3 - FPI Assets under Custody
+with ui.nav_panel("FPI AuC"):
+    with ui.layout_columns():  # ui.sidebar(open="desktop"):
+        with ui.card():
+            ui.card_header("FPI Assets under Custody (AUC) during ...")
+            ui.input_date_range(
+                id="date_range",
+                label="Select date range:",
+                # start=date(2024, 1, 1),
+                # end=date(2025, 1, 1),
+                start="2024-01-01",
+                end="2025-12-01",
+                min="2023-01-01",
+                max="2026-01-01",
+                format="yyyy-mm-dd",
+                startview="year",
+                weekstart=0,
+                language="en",
+                separator="to",
+                # width="100%",
+            )
+            ui.input_selectize("sector", "Sector", SCTRS, selected="Airlines")
+
+        with ui.card():
+            # ui.card_header("For ")
+            @render.ui
+            def pg3_r():
+                return ui.card_header("AUC in sector: {}".format(input.sector()))
+
+            @render.data_frame
+            def auc_pivot():
+                dt_pvt = sector_auc()
+                print(dt_pvt)
+                dt_pvt["Date_M"] = dt_pvt.Date.dt.to_period("M").astype(str)
+                df_wide1 = dt_pvt.pivot_table(
+                    index="Sectors",
+                    columns="Date_M",
+                    values="Equity",
+                    aggfunc="sum",
+                    observed=True,
+                )
+
+                return render.DataTable(df_wide1)
+
+
+# --------- Page 4 - Registered FPI list
+with ui.nav_panel("Registered FPI list"):
+    with ui.card():
+        ui.card_header("Registered FPI list")
+        ui.input_selectize("fpi_cntry", "Country", CNTRY, selected="US")
+        # @render.data_frame
+        # def fpi_list():
+        #    return render.DataGrid(fpi_list_df[fpi_list_df["country"] == input.fpi_cntry()]
+
 # --------------------------------------------------------
 # Reactive calculations and effects
 # --------------------------------------------------------
@@ -479,6 +545,26 @@ with ui.nav_panel("Stock level"):
 # def short_mnth():
 #    print(mth[input.mnth()])
 #    return mth[input.mnth()]
+
+
+# functions for AUC pane
+@reactive.calc
+def sector_auc() -> pd.DataFrame:
+    """Returns dataframe with net positions at monthly level"""
+    st, end_d = input.date_range()
+    st = pd.to_datetime(st)
+    end_d = pd.to_datetime(end_d)
+    print(input.sector())
+    auc1 = auc[
+        (auc["Date"] >= st)
+        # & (auc["Date"] <= end_d)
+        & (auc["Sectors"] == str(input.sector()))
+    ]
+    return auc1
+
+
+# def auc():
+# auc[month==] & auc[year==input.yr1()] & auc[sector==input.sector()]
 
 
 @reactive.calc
